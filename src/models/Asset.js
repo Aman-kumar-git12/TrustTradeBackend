@@ -45,7 +45,7 @@ const assetSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['active', 'sold', 'archived'],
+        enum: ['active', 'inactive'],
         default: 'active',
     },
     statusHistory: [{

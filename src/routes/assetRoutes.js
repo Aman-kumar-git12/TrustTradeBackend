@@ -4,16 +4,26 @@ const {
     getAssets,
     getAssetById,
     createAsset,
-    getMyListings,
 } = require('../controllers/assetController');
+const {
+    getSellerAssets,
+    updateAssetStatus,
+    deleteAsset,
+    getSellerAssetDetails
+} = require('../controllers/sellerAssetController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.route('/')
     .get(getAssets)
     .post(protect, createAsset);
 
-router.route('/my-listings').get(protect, getMyListings);
-
-router.route('/:id').get(getAssetById);
+// Seller Management Routes
+router.route('/my-listings').get(protect, getSellerAssets);
+router.route('/my-listings/:id').get(protect, getSellerAssetDetails);
+router.route('/:id/status').put((req, res, next) => {
+    console.log("Asset Route HIT for PATCH status. ID:", req.params.id);
+    next();
+}, protect, updateAssetStatus);
+router.route('/:id').delete(protect, deleteAsset).get(getAssetById);
 
 module.exports = router;

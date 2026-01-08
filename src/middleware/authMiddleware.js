@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const protect = async (req, res, next) => {
+    console.log("Protect Middleware HIT. Method:", req.method, "URL:", req.originalUrl);
     let token;
 
     if (
