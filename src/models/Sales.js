@@ -3,22 +3,31 @@ const mongoose = require('mongoose');
 const salesSchema = mongoose.Schema({
     asset: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
+        required: false,
         ref: 'Asset',
+    },
+    interest: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: false,
+        ref: 'Interest',
     },
     seller: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
+        required: false,
         ref: 'User',
     },
     buyer: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
+        required: false,
         ref: 'User',
     },
     finalPrice: {
         type: Number,
-        required: true,
+        required: false,
+    },
+    price: {
+        type: Number,
+        required: false,
     },
     dealDate: {
         type: Date,
@@ -30,8 +39,12 @@ const salesSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['completed', 'cancelled', 'refunded'],
-        default: 'completed'
+        enum: ['sold', 'unsold'],
+        default: 'sold'
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true,

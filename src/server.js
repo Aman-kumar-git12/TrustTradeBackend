@@ -25,6 +25,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
+console.log("Server restarting..."); // Trigger restart
 
 // Routes (Placeholders for now)
 app.get('/', (req, res) => {
@@ -42,6 +43,11 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/interests', interestRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/dashboard/business', businessDashboardRoutes);
+
+const salesRoutes = require('./routes/salesRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+app.use('/api/sales', salesRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 
 const PORT = process.env.PORT || 5002;

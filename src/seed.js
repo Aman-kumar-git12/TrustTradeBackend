@@ -112,6 +112,8 @@ const seedData = async () => {
                 category: 'IT Hardware',
                 condition: 'Used - Like New',
                 price: 45000,
+                costPrice: 32000,
+                quantity: 15,
                 location: 'California, USA',
                 images: ['https://images.unsplash.com/photo-1558494949-efc5270f9c63?auto=format&fit=crop&w=800'],
                 status: 'active',
@@ -125,9 +127,10 @@ const seedData = async () => {
                 category: 'IT Hardware',
                 condition: 'Used - Good',
                 price: 75000,
+                quantity: 5,
                 location: 'California, USA',
                 images: ['https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&w=800'],
-                status: 'inactive',
+                status: 'active',
                 views: 890
             },
             {
@@ -241,15 +244,40 @@ const seedData = async () => {
         // Sarah's Assets
         const sarahsAssets = assets.filter(a => a.seller.toString() === seller2._id.toString());
 
+        // Create EXTRA random assets for Sarah to populate dashboard (Both businesses)
+        const categories = ['IT Hardware', 'Vehicles', 'Industrial', 'Office Equipment', 'Heavy Machinery'];
+        const extraAssetsData = [];
+
+        for (let i = 0; i < 15; i++) {
+            extraAssetsData.push({
+                seller: seller2._id,
+                business: Math.random() > 0.5 ? techHQ._id : techEast._id,
+                title: `Surplus Inventory ${getRandomItem(categories)} Batch #${i + 1}`,
+                description: 'Generated asset for high volume dashboard testing. Includes assorted items.',
+                category: getRandomItem(categories),
+                condition: 'Used - Good',
+                price: Math.floor(Math.random() * 50000) + 2000,
+                costPrice: Math.floor((Math.random() * 50000 + 2000) * 0.7), // Approx 70% cost
+                quantity: Math.floor(Math.random() * 50) + 10,
+                location: Math.random() > 0.5 ? 'California, USA' : 'New York, USA',
+                images: ['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800'],
+                status: 'active',
+                views: Math.floor(Math.random() * 500)
+            });
+        }
+
+        const extraAssets = await Asset.create(extraAssetsData);
+        // Combine original assets and new ones for lead generation
+        const allSarahAssets = [...sarahsAssets, ...extraAssets];
+
+        console.log(`Generated ${extraAssets.length} extra assets. Total Sarah Assets: ${allSarahAssets.length}`);
         console.log('Generating Random Leads...');
         const interestsData = [];
 
-        // Generate 3-5 leads for each of Sarah's active assets
-        const activeAssets = sarahsAssets.filter(a => a.status === 'active');
-
-        activeAssets.forEach(asset => {
-            // Random number of leads (1 to 4)
-            const numLeads = Math.floor(Math.random() * 4) + 1;
+        // Generate leads for ALL assets to ensure data density
+        allSarahAssets.forEach(asset => {
+            // Generate 2 to 4 leads per asset (we have 4 potential buyers)
+            const numLeads = Math.floor(Math.random() * 3) + 2;
             const buyers = getRandomSubset(potentialBuyers, numLeads);
 
             buyers.forEach(buyer => {
@@ -276,58 +304,50 @@ const seedData = async () => {
         console.log('Generating Sales History...');
         const salesData = [];
 
-        // 1. Create Sales for existing 'sold' assets
-        const soldAssets = sarahsAssets.filter(a => a.status === 'inactive');
-        soldAssets.forEach(asset => {
-            const buyer = getRandomItem(potentialBuyers);
+        // 1. Generate Historical Sales for Sarah's Assets (Multi-Order Analytics)
+        console.log('Generating Sales History for Analytics...');
+
+        for (const asset of sarahsAssets) {
+            // 80% chance an asset has sales
+            if (Math.random() > 0.2) {
+                // Generate 3 to 20 sales per asset to simulate volume
+                const salesCount = Math.floor(Math.random() * 18) + 3;
+
+                for (let i = 0; i < salesCount; i++) {
+                    const buyer = getRandomItem(potentialBuyers);
+
+                    // Random date in last 365 days
+                    const daysAgo = Math.floor(Math.random() * 365);
+                    const dealDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+                    // Price variation (Negotiated price)
+                    const finalPrice = Math.floor(asset.price * (0.85 + Math.random() * 0.15)); // 85-100%
+
+                    salesData.push({
+                        asset: asset._id,
+                        seller: seller2._id,
+                        buyer: buyer._id,
+                        finalPrice: finalPrice,
+                        dealDate: dealDate,
+                        status: 'sold'
+                    });
+                }
+            }
+        }
+
+        // 2. Guaranteed Recent Sales (Last 24 hours) for Real-time Charts
+        console.log('Generating Guaranteed Recent Sales...');
+        const recentAssets = sarahsAssets.slice(0, 3); // Pick first 3 assets
+        recentAssets.forEach(asset => {
             salesData.push({
                 asset: asset._id,
                 seller: seller2._id,
-                buyer: buyer._id,
-                finalPrice: asset.price * (0.8 + Math.random() * 0.2), // 80-100% of asking price
-                dealDate: new Date(Date.now() - Math.floor(Math.random() * 60 * 24 * 60 * 60 * 1000)), // Random time in last 60 days
-                status: 'completed'
+                buyer: buyer1._id,
+                finalPrice: asset.price,
+                dealDate: new Date(), // NOW
+                status: 'sold'
             });
         });
-
-        // 2. Generate 6 months of historical sales data (Creating new sold assets for chart population)
-        const now = new Date();
-        for (let i = 0; i < 6; i++) {
-            // Create 1-3 sales per month
-            const salesCount = Math.floor(Math.random() * 3) + 1;
-
-            for (let j = 0; j < salesCount; j++) {
-                const monthDate = new Date(now.getFullYear(), now.getMonth() - i, Math.floor(Math.random() * 28) + 1);
-                const randomBuyer = getRandomItem(potentialBuyers);
-
-                // Varied prices
-                const basePrice = Math.floor(Math.random() * 20000) + 5000;
-
-                const dummyAsset = await Asset.create({
-                    seller: seller2._id,
-                    business: Math.random() > 0.5 ? techHQ._id : techEast._id, // Random business
-                    title: `Sold Item #${i}${j} - ${monthDate.toLocaleString('default', { month: 'short' })}`,
-                    description: 'Historical sales data for chart visualization.',
-                    category: getRandomItem(['IT Hardware', 'Vehicles', 'Industrial', 'Office Equipment']),
-                    condition: 'Used - Good',
-                    price: basePrice,
-                    location: 'California, USA',
-                    images: ['https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800'],
-                    status: 'inactive',
-                    views: Math.floor(Math.random() * 1000) + 100,
-                    createdAt: monthDate
-                });
-
-                salesData.push({
-                    asset: dummyAsset._id,
-                    seller: seller2._id,
-                    buyer: randomBuyer._id,
-                    finalPrice: basePrice,
-                    dealDate: monthDate,
-                    status: 'completed'
-                });
-            }
-        }
 
         await Sales.create(salesData);
         console.log(`Created ${salesData.length} Sales Records...`);

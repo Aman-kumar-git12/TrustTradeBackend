@@ -120,9 +120,42 @@ const deleteAsset = async (req, res) => {
     }
 };
 
+// @desc    Update asset details
+// @route   PUT /api/assets/:id
+// @access  Private/Seller
+const updateAsset = async (req, res) => {
+    try {
+        const { title, description, price, condition, location, category } = req.body;
+
+        const asset = await Asset.findById(req.params.id);
+
+        if (!asset) {
+            return res.status(404).json({ message: 'Asset not found' });
+        }
+
+        // Ensure user owns the asset
+        if (asset.seller.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized to update this asset' });
+        }
+
+        asset.title = title || asset.title;
+        asset.description = description || asset.description;
+        asset.price = price || asset.price;
+        asset.condition = condition || asset.condition;
+        asset.location = location || asset.location;
+        asset.category = category || asset.category;
+
+        await asset.save();
+        res.status(200).json(asset);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update asset', error: error.message });
+    }
+};
+
 module.exports = {
     getSellerAssets,
     updateAssetStatus,
     deleteAsset,
-    getSellerAssetDetails
+    getSellerAssetDetails,
+    updateAsset
 };

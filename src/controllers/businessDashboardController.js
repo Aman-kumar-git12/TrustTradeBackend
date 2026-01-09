@@ -31,7 +31,7 @@ const getBusinessStats = async (req, res) => {
         // Sales logic
         // Find sales where the asset belongs to this business
         // Since Sales -> Asset, and Asset -> Business
-        const sales = await Sales.find().populate({
+        const sales = await Sales.find({ isDeleted: { $ne: true } }).populate({
             path: 'asset',
             match: { business: businessId }
         });
@@ -152,7 +152,7 @@ const getBusinessAssets = async (req, res) => {
 const getBusinessLeads = async (req, res) => {
     try {
         const { businessId } = req.params;
-        const { status, search } = req.query;
+        const { status, search, salesStatus } = req.query;
 
         // Verify ownership (indirectly via business assets)
         const business = await Business.findOne({ _id: businessId, owner: req.user._id });
@@ -168,6 +168,28 @@ const getBusinessLeads = async (req, res) => {
 
         if (status) {
             query.status = status;
+        }
+
+        // Sales Status Filtering
+        if (salesStatus) {
+            if (salesStatus === 'active') {
+                // Active = No Sales Record (Exclude all leads that have a sale record)
+                // We need to find all sales for these assets
+                const allSales = await Sales.find({ asset: { $in: assetIds } }).select('interest');
+                const soldInterestIds = allSales.map(s => s.interest);
+                query._id = { $nin: soldInterestIds };
+            } else {
+                // Specific Status (sold/unsold)
+                // Find sales matching the requested status (and assets)
+                // Note: For 'unsold', isDeleted is true, so we must ensure we don't filter those out (we already removed default exclusion)
+                const matchingSales = await Sales.find({
+                    asset: { $in: assetIds },
+                    status: salesStatus
+                }).select('interest');
+
+                const interestIds = matchingSales.map(s => s.interest);
+                query._id = { $in: interestIds };
+            }
         }
 
         // Search logic for leads (search by buyer name or asset title)
@@ -191,7 +213,21 @@ const getBusinessLeads = async (req, res) => {
             );
         }
 
-        res.json(leads);
+        // Fetch Sales status for these leads
+        const leadIds = leads.map(l => l._id);
+        const sales = await Sales.find({ interest: { $in: leadIds } });
+
+        // Map sales status to leads
+        const leadsWithStatus = leads.map(lead => {
+            const sale = sales.find(s => s.interest && s.interest.toString() === lead._id.toString());
+            return {
+                ...lead.toObject(),
+                salesStatus: sale ? sale.status : null, // 'sold' or 'unsold'
+                saleId: sale ? sale._id : null
+            };
+        });
+
+        res.json(leadsWithStatus);
 
     } catch (error) {
         console.error('Error fetching business leads:', error);

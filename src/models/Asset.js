@@ -32,6 +32,14 @@ const assetSchema = mongoose.Schema({
         type: Number,
         required: true,
     },
+    costPrice: {
+        type: Number,
+        default: 0
+    },
+    quantity: {
+        type: Number,
+        default: 1
+    },
     location: {
         type: String,
         required: true,
