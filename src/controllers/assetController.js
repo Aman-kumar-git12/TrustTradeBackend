@@ -37,9 +37,14 @@ const getAssets = async (req, res) => {
             if (maxPrice) query.price.$lte = Number(maxPrice);
         }
 
-        const assets = await Asset.find(query)
-            .populate('seller', 'fullName companyName')
-            .sort({ createdAt: -1 }); // Newest first
+        let assets = await Asset.find(query)
+            .populate('seller', 'fullName companyName');
+
+        // Randomize order
+        for (let i = assets.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [assets[i], assets[j]] = [assets[j], assets[i]];
+        }
 
         res.status(200).json(assets);
     } catch (error) {

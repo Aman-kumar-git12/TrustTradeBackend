@@ -10,8 +10,9 @@ const businessSchema = mongoose.Schema({
         type: String,
         required: true,
     },
-    imageUrl: {
-        type: String,
+    images: {
+        type: [String],
+        default: []
     },
     location: {
         city: {

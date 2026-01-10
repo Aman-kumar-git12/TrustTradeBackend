@@ -29,6 +29,11 @@ const salesSchema = mongoose.Schema({
         type: Number,
         required: false,
     },
+    quantity: {
+        type: Number,
+        required: true,
+        default: 1
+    },
     dealDate: {
         type: Date,
         default: Date.now,

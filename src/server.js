@@ -1,10 +1,10 @@
 const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-// Load env vars
-dotenv.config();
+const cloudinaryRoutes = require("./cloudinary/routes.js");
 
 // Connect to database
 connectDB();
@@ -27,6 +27,9 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 console.log("Server restarting..."); // Trigger restart
 
+// Cloudinary Routes
+app.use("/api/images", cloudinaryRoutes);
+
 // Routes (Placeholders for now)
 app.get('/', (req, res) => {
     res.send('AssetDirect API is running...');
@@ -35,18 +38,22 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 const assetRoutes = require('./routes/assetRoutes');
 const interestRoutes = require('./routes/interestRoutes');
-const businessRoutes = require('./routes/businessRoutes');
-const businessDashboardRoutes = require('./routes/businessDashboardRoutes');
+const businessRoutes = require('./routes/seller/businessRoutes');
+const businessDashboardRoutes = require('./routes/seller/dashboardRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/interests', interestRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/dashboard/business', businessDashboardRoutes);
+app.use('/api/home', require('./routes/homeRoutes'));
 
-const salesRoutes = require('./routes/salesRoutes');
-const analyticsRoutes = require('./routes/analyticsRoutes');
+const salesRoutes = require('./routes/seller/salesRoutes');
+const buyerAnalyticsRoutes = require('./routes/buyer/analyticsRoutes');
+const analyticsRoutes = require('./routes/seller/analyticsRoutes');
+
 app.use('/api/sales', salesRoutes);
+app.use('/api/analytics/buyer', buyerAnalyticsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 

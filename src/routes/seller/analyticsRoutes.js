@@ -11,8 +11,8 @@ const {
     getProductAnalytics,
     getProductAnalytics30d,
     getProductAnalyticsAll
-} = require('../controllers/analyticsController');
-const { protect } = require('../middleware/authMiddleware');
+} = require('../../controllers/seller/analyticsController');
+const { protect } = require('../../middleware/seller/analyticsMiddleware');
 
 router.get('/:businessId/overview/24h', protect, getOverview24h);
 router.get('/:businessId/overview/15d', protect, getOverview15d);

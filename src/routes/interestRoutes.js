@@ -4,13 +4,15 @@ const {
     createInterest,
     getBuyerInterests,
     getSellerLeads,
-    updateInterestStatus
+    updateInterestStatus,
+    deleteInterest
 } = require('../controllers/interestController');
-const { protect } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/interestMiddleware');
 
 router.post('/', protect, createInterest);
 router.get('/buyer', protect, getBuyerInterests);
 router.get('/seller', protect, getSellerLeads);
 router.put('/:id/status', protect, updateInterestStatus);
+router.delete('/:id', protect, deleteInterest);
 
 module.exports = router;

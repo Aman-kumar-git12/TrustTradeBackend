@@ -1,6 +1,6 @@
-const overviewService = require('../services/analytics/overviewService');
-const productService = require('../services/analytics/productService');
-const customerService = require('../services/analytics/customerService');
+const overviewService = require('../../services/analytics/overviewService');
+const productService = require('../../services/analytics/productService');
+const customerService = require('../../services/analytics/customerService');
 
 // @desc    Get 24h Overview (Hourly)
 // @route   GET /api/analytics/:businessId/overview/24h

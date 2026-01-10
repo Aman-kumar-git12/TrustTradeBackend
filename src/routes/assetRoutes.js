@@ -11,8 +11,8 @@ const {
     deleteAsset,
     getSellerAssetDetails,
     updateAsset
-} = require('../controllers/sellerAssetController');
-const { protect } = require('../middleware/authMiddleware');
+} = require('../controllers/seller/assetController');
+const { protect } = require('../middleware/assetMiddleware');
 
 router.route('/')
     .get(getAssets)

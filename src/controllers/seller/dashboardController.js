@@ -1,7 +1,7 @@
-const Asset = require('../models/Asset');
-const Interest = require('../models/Interest');
-const Business = require('../models/Business');
-const Sales = require('../models/Sales');
+const Asset = require('../../models/Asset');
+const Interest = require('../../models/Interest');
+const Business = require('../../models/Business');
+const Sales = require('../../models/Sales');
 
 // @desc    Get dashboard stats for a specific business
 // @route   GET /api/dashboard/business/:businessId/stats
@@ -10,8 +10,9 @@ const getBusinessStats = async (req, res) => {
     try {
         const { businessId } = req.params;
 
-        // Verify ownership
-        const business = await Business.findOne({ _id: businessId, owner: req.user._id });
+        // Verify ownership (handled by middleware)
+        const business = req.business;
+        // const business = await Business.findOne({ _id: businessId, owner: req.user._id });
         if (!business) {
             return res.status(404).json({ message: 'Business not found or unauthorized' });
         }
@@ -112,8 +113,9 @@ const getBusinessAssets = async (req, res) => {
         const { businessId } = req.params;
         const { status, search, category, minPrice, maxPrice } = req.query;
 
-        // Verify ownership
-        const business = await Business.findOne({ _id: businessId, owner: req.user._id });
+        // Verify ownership (handled by middleware)
+        const business = req.business;
+        // const business = await Business.findOne({ _id: businessId, owner: req.user._id });
         if (!business) {
             return res.status(404).json({ message: 'Business not found or unauthorized' });
         }
@@ -154,8 +156,9 @@ const getBusinessLeads = async (req, res) => {
         const { businessId } = req.params;
         const { status, search, salesStatus } = req.query;
 
-        // Verify ownership (indirectly via business assets)
-        const business = await Business.findOne({ _id: businessId, owner: req.user._id });
+        // Verify ownership (handled by middleware)
+        const business = req.business;
+        // const business = await Business.findOne({ _id: businessId, owner: req.user._id });
         if (!business) {
             return res.status(404).json({ message: 'Business not found or unauthorized' });
         }
@@ -199,7 +202,7 @@ const getBusinessLeads = async (req, res) => {
         // Let's stick to population and basic filtering for now or simple pipeline.
 
         let leads = await Interest.find(query)
-            .populate('asset', 'title business')
+            .populate('asset', 'title business price')
             .populate('buyer', 'fullName email companyName phone')
             .sort({ createdAt: -1 });
 
@@ -223,7 +226,10 @@ const getBusinessLeads = async (req, res) => {
             return {
                 ...lead.toObject(),
                 salesStatus: sale ? sale.status : null, // 'sold' or 'unsold'
-                saleId: sale ? sale._id : null
+                saleId: sale ? sale._id : null,
+                soldQuantity: sale ? sale.quantity : null,
+                soldPrice: sale ? sale.price : null,
+                soldTotalAmount: sale ? sale.finalPrice : null
             };
         });
 

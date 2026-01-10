@@ -1,4 +1,4 @@
-const Asset = require('../models/Asset');
+const Asset = require('../../models/Asset');
 
 // @desc    Get logged in seller's assets (with optional status filter)
 // @route   GET /api/assets/my-listings

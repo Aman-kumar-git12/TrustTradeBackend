@@ -28,7 +28,7 @@ const seedData = async () => {
                 email: 'seller@demo.com',
                 password: 'password123',
                 role: 'seller',
-                companyName: 'Heavy Machinery Co.',
+                mode: 'dark',
                 phone: '+1 (555) 123-4567',
                 avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=256&q=80'
             },
@@ -37,7 +37,7 @@ const seedData = async () => {
                 email: 'sarah@techsell.com',
                 password: 'password123',
                 role: 'seller',
-                companyName: 'Tech Liquidators Inc.',
+                mode: 'dark',
                 phone: '+1 (555) 987-6543',
                 avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80'
             },
@@ -46,7 +46,7 @@ const seedData = async () => {
                 email: 'buyer@demo.com',
                 password: 'password123',
                 role: 'buyer',
-                companyName: 'Construction Corp',
+                mode: 'dark',
                 phone: '+1 (555) 456-7890',
                 avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80'
             },
@@ -55,7 +55,7 @@ const seedData = async () => {
                 email: 'alice@startups.com',
                 password: 'password123',
                 role: 'buyer',
-                companyName: 'NextGen Startups',
+                mode: 'dark',
                 phone: '+1 (555) 789-0123',
                 avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80'
             },
@@ -64,7 +64,7 @@ const seedData = async () => {
                 email: 'robert@investors.com',
                 password: 'password123',
                 role: 'buyer',
-                companyName: 'Global Assets Ltd',
+                mode: 'dark',
                 phone: '+1 (555) 222-3333',
                 avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80'
             }
@@ -114,6 +114,7 @@ const seedData = async () => {
                 price: 45000,
                 costPrice: 32000,
                 quantity: 15,
+                sales: 5,
                 location: 'California, USA',
                 images: ['https://images.unsplash.com/photo-1558494949-efc5270f9c63?auto=format&fit=crop&w=800'],
                 status: 'active',
@@ -128,6 +129,7 @@ const seedData = async () => {
                 condition: 'Used - Good',
                 price: 75000,
                 quantity: 5,
+                sales: 2,
                 location: 'California, USA',
                 images: ['https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&w=800'],
                 status: 'active',
@@ -246,23 +248,36 @@ const seedData = async () => {
 
         // Create EXTRA random assets for Sarah to populate dashboard (Both businesses)
         const categories = ['IT Hardware', 'Vehicles', 'Industrial', 'Office Equipment', 'Heavy Machinery'];
+        const brands = ['Enterprise', 'Global', 'Precision', 'Apex', 'Titan', 'Nexus', 'Velocity', 'Quantum', 'Steel', 'Prime'];
+        const types = ['Package', 'Inventory', 'Batch', 'Restock', 'Liquidation', 'Surplus', 'Refurbished', 'Certified', 'Bulk', 'Direct'];
+
         const extraAssetsData = [];
 
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 20; i++) {
+            const category = getRandomItem(categories);
+            const brand = getRandomItem(brands);
+            const type = getRandomItem(types);
+            const uniqueID = Math.floor(Math.random() * 900) + 100;
+
             extraAssetsData.push({
                 seller: seller2._id,
                 business: Math.random() > 0.5 ? techHQ._id : techEast._id,
-                title: `Surplus Inventory ${getRandomItem(categories)} Batch #${i + 1}`,
-                description: 'Generated asset for high volume dashboard testing. Includes assorted items.',
-                category: getRandomItem(categories),
-                condition: 'Used - Good',
+                title: `${brand} ${category} ${type} - SRX-${uniqueID}`,
+                description: `High-quality ${category.toLowerCase()} ${type.toLowerCase()} from a corporate environment. Thoroughly inspected and ready for immediate deployment. Includes original accessories and maintenance logs.`,
+                category: category,
+                condition: getRandomItem(['Used - Like New', 'Used - Good', 'Used - Fair']),
                 price: Math.floor(Math.random() * 50000) + 2000,
-                costPrice: Math.floor((Math.random() * 50000 + 2000) * 0.7), // Approx 70% cost
+                costPrice: Math.floor((Math.random() * 50000 + 2000) * 0.7),
                 quantity: Math.floor(Math.random() * 50) + 10,
+                sales: Math.floor(Math.random() * 10),
                 location: Math.random() > 0.5 ? 'California, USA' : 'New York, USA',
-                images: ['https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800'],
+                images: [
+                    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800',
+                    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800',
+                    'https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=800'
+                ][Math.floor(Math.random() * 3)],
                 status: 'active',
-                views: Math.floor(Math.random() * 500)
+                views: Math.floor(Math.random() * 1200)
             });
         }
 
@@ -293,6 +308,7 @@ const seedData = async () => {
                     seller: seller2._id,
                     message: `I am interested in this ${asset.title}. Is it still available?`,
                     status: status,
+                    quantity: Math.floor(Math.random() * 3) + 1,
                     createdAt: new Date(Date.now() - Math.floor(Math.random() * 10 * 24 * 60 * 60 * 1000)) // Random time in last 10 days
                 });
             });
@@ -321,13 +337,14 @@ const seedData = async () => {
                     const dealDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 
                     // Price variation (Negotiated price)
-                    const finalPrice = Math.floor(asset.price * (0.85 + Math.random() * 0.15)); // 85-100%
+                    const price = Math.floor(asset.price * (0.85 + Math.random() * 0.15)); // 85-100%
 
                     salesData.push({
                         asset: asset._id,
                         seller: seller2._id,
                         buyer: buyer._id,
-                        finalPrice: finalPrice,
+                        price: price,
+                        quantity: Math.floor(Math.random() * 5) + 1,
                         dealDate: dealDate,
                         status: 'sold'
                     });
@@ -343,7 +360,8 @@ const seedData = async () => {
                 asset: asset._id,
                 seller: seller2._id,
                 buyer: buyer1._id,
-                finalPrice: asset.price,
+                price: asset.price,
+                quantity: 1,
                 dealDate: new Date(), // NOW
                 status: 'sold'
             });

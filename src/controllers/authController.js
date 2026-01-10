@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Business = require('../models/Business');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -122,9 +123,45 @@ const updateProfile = async (req, res) => {
     }
 };
 
+// @desc    Get public user profile
+// @route   GET /api/auth/public/:id
+// @access  Public
+const getPublicProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        let businesses = [];
+        if (user.role === 'seller') {
+            businesses = await Business.find({ owner: user._id });
+        }
+
+        res.status(200).json({
+            user: {
+                _id: user._id,
+                fullName: user.fullName,
+                role: user.role,
+                avatarUrl: user.avatarUrl,
+                createdAt: user.createdAt,
+                companyName: user.companyName,
+                description: user.description,
+                email: user.email,
+                phone: user.phone
+            },
+            businesses
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
     loginUser,
     getMe,
     updateProfile,
+    getPublicProfile
 };

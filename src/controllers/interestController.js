@@ -5,11 +5,11 @@ const Asset = require('../models/Asset');
 // @route   POST /api/interests
 // @access  Private/Buyer
 const createInterest = async (req, res) => {
-    if (req.user.role !== 'buyer') {
-        return res.status(403).json({ message: 'Only buyers can show interest' });
-    }
+    const { assetId, message, status } = req.body;
 
-    const { assetId, message } = req.body;
+    // Optional status validation
+    const validInitialStatuses = ['pending', 'negotiating'];
+    const finalStatus = validInitialStatuses.includes(status) ? status : 'pending';
 
     try {
         const asset = await Asset.findById(assetId);
@@ -18,13 +18,9 @@ const createInterest = async (req, res) => {
             return res.status(404).json({ message: 'Asset not found' });
         }
 
-        const existingInterest = await Interest.findOne({
-            buyer: req.user._id,
-            asset: assetId
-        });
-
-        if (existingInterest) {
-            return res.status(400).json({ message: 'You have already shown interest in this asset' });
+        // Prevent showing interest in own asset
+        if (asset.seller.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: 'You cannot show interest in your own asset' });
         }
 
         const interest = await Interest.create({
@@ -32,7 +28,7 @@ const createInterest = async (req, res) => {
             asset: assetId,
             seller: asset.seller,
             message,
-            status: 'pending'
+            status: finalStatus
         });
 
         res.status(201).json(interest);
@@ -46,11 +42,55 @@ const createInterest = async (req, res) => {
 // @access  Private/Buyer
 const getBuyerInterests = async (req, res) => {
     try {
-        const interests = await Interest.find({ buyer: req.user._id })
-            .populate('asset')
-            .populate('seller', 'fullName companyName email'); // Email only shown if accepted, need filtering logic in frontend or here. 
-        // For MVP, we send it, frontend can hide if pending. Logic:
-        // Ideally we shouldn't send sensitive info if pending.
+        const { search, category, minPrice, maxPrice, condition, status } = req.query;
+
+        // Base query: find interests belonging to the authenticated buyer
+        // Exclude interests that have been converted to sales (salesStatus: 'sold')
+        let query = {
+            buyer: req.user._id,
+            salesStatus: { $ne: 'sold' }
+        };
+
+        // We'll populate everything first, then filter in-memory if needed for cross-collection searches, 
+        // OR use aggregation if performance becomes an issue. For now, following the pattern in getSellerLeads.
+        let interests = await Interest.find(query)
+            .populate({
+                path: 'asset',
+                populate: { path: 'business', select: 'businessName' }
+            })
+            .populate('seller', 'fullName companyName email phone')
+            .sort({ createdAt: -1 });
+
+        // Backend Filter Logic
+        if (search || category || minPrice || maxPrice || condition || status) {
+            const searchLower = search?.toLowerCase();
+
+            interests = interests.filter(item => {
+                const asset = item.asset;
+                if (!asset) return false;
+
+                // Search match (title or business name)
+                const matchesSearch = !search || (
+                    asset.title?.toLowerCase().includes(searchLower) ||
+                    (asset.business?.businessName || '').toLowerCase().includes(searchLower)
+                );
+
+                // Category match
+                const matchesCategory = !category || asset.category === category;
+
+                // Price match
+                const matchesMinPrice = !minPrice || asset.price >= parseFloat(minPrice);
+                const matchesMaxPrice = !maxPrice || asset.price <= parseFloat(maxPrice);
+
+                // Status match
+                const matchesStatus = !status || item.status === status;
+
+                // Condition match
+                const matchesCondition = !condition || asset.condition === condition;
+
+                return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice && matchesCondition && matchesStatus;
+            });
+        }
 
         res.status(200).json(interests);
     } catch (error) {
@@ -133,10 +173,44 @@ const updateInterestStatus = async (req, res) => {
 
         await interest.save();
 
-        res.status(200).json(interest);
+        const updatedInterest = await Interest.findById(interest._id)
+            .populate('asset')
+            .populate('buyer', 'fullName email companyName phone');
+
+        res.status(200).json(updatedInterest);
     } catch (error) {
         console.error('Error updating interest status:', error);
         res.status(500).json({ message: 'Server Error: Could not update status' });
+    }
+};
+
+// @desc    Delete/Retract interest (Buyer retracts interest)
+// @route   DELETE /api/interests/:id
+// @access  Private/Buyer
+const deleteInterest = async (req, res) => {
+    try {
+        const interest = await Interest.findById(req.params.id);
+
+        if (!interest) {
+            return res.status(404).json({ message: 'Interest record not found' });
+        }
+
+        // Ensure logged in user is the buyer who sent it
+        if (interest.buyer.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ message: 'Not authorized to delete this interest' });
+        }
+
+        // Only allow deletion if status is pending or negotiating
+        if (!['pending', 'negotiating'].includes(interest.status)) {
+            return res.status(400).json({ message: `Cannot delete a record that is already ${interest.status}` });
+        }
+
+        await interest.deleteOne();
+
+        res.status(200).json({ message: 'Interest retracted successfully', id: req.params.id });
+    } catch (error) {
+        console.error('Error deleting interest:', error);
+        res.status(500).json({ message: 'Server Error: Could not retract interest' });
     }
 };
 
@@ -144,5 +218,6 @@ module.exports = {
     createInterest,
     getBuyerInterests,
     getSellerLeads,
-    updateInterestStatus
+    updateInterestStatus,
+    deleteInterest
 };

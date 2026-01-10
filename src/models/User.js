@@ -21,8 +21,10 @@ const userSchema = mongoose.Schema({
         required: true,
         default: 'buyer'
     },
-    companyName: {
+    mode: {
         type: String,
+        enum: ['light', 'dark'],
+        default: 'dark'
     },
     phone: {
         type: String,

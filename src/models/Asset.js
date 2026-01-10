@@ -40,6 +40,10 @@ const assetSchema = mongoose.Schema({
         type: Number,
         default: 1
     },
+    sales: {
+        type: Number,
+        default: 0
+    },
     location: {
         type: String,
         required: true,

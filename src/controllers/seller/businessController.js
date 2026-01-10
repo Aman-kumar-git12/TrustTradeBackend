@@ -1,4 +1,5 @@
-const Business = require('../models/Business');
+const Business = require('../../models/Business');
+const Asset = require('../../models/Asset');
 
 // @desc    Get my businesses
 // @route   GET /api/businesses
@@ -16,23 +17,19 @@ const getMyBusinesses = async (req, res) => {
 // @route   POST /api/businesses
 // @access  Private
 const createBusiness = async (req, res) => {
-    const { businessName, imageUrl, location, description } = req.body;
+    const { businessName, images, location, description } = req.body;
 
     if (!businessName || !location || !location.city || !location.place || !description) {
         return res.status(400).json({ message: 'Please add all required fields' });
     }
 
     try {
-        // limit check
-        const count = await Business.countDocuments({ owner: req.user._id });
-        if (count >= 4) {
-            return res.status(400).json({ message: 'Maximum 4 businesses allowed per account' });
-        }
+        // limit check handled by middleware
 
         const business = await Business.create({
             owner: req.user._id,
             businessName,
-            imageUrl,
+            images,
             location,
             description
         });
@@ -54,10 +51,10 @@ const updateBusiness = async (req, res) => {
             return res.status(404).json({ message: 'Business not found' });
         }
 
-        // Check user ownership
-        if (business.owner.toString() !== req.user.id) {
-            return res.status(401).json({ message: 'User not authorized' });
-        }
+        // Check user ownership (handled by middleware)
+        // if (business.owner.toString() !== req.user.id) {
+        //     return res.status(401).json({ message: 'User not authorized' });
+        // }
 
         const updatedBusiness = await Business.findByIdAndUpdate(
             req.params.id,
@@ -82,10 +79,10 @@ const deleteBusiness = async (req, res) => {
             return res.status(404).json({ message: 'Business not found' });
         }
 
-        // Check user ownership
-        if (business.owner.toString() !== req.user.id) {
-            return res.status(401).json({ message: 'User not authorized' });
-        }
+        // Check user ownership (handled by middleware)
+        // if (business.owner.toString() !== req.user.id) {
+        //     return res.status(401).json({ message: 'User not authorized' });
+        // }
 
         await business.deleteOne();
 
@@ -95,9 +92,44 @@ const deleteBusiness = async (req, res) => {
     }
 };
 
+// @desc    Get business by ID (Public)
+// @route   GET /api/businesses/:id
+// @access  Public
+const getBusinessById = async (req, res) => {
+    try {
+        const business = await Business.findById(req.params.id).populate('owner', 'fullName avatarUrl email phone');
+
+        if (!business) {
+            return res.status(404).json({ message: 'Business not found' });
+        }
+
+        res.status(200).json(business);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get active assets for a specific business
+// @route   GET /api/businesses/:id/assets
+// @access  Public
+const getBusinessAssets = async (req, res) => {
+    try {
+        const assets = await Asset.find({
+            business: req.params.id,
+            status: 'active'
+        }).populate('seller', 'fullName companyName');
+
+        res.status(200).json(assets);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getMyBusinesses,
     createBusiness,
     updateBusiness,
-    deleteBusiness
+    deleteBusiness,
+    getBusinessById,
+    getBusinessAssets
 };
