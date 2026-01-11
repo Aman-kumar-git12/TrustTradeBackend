@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Business = require('../models/Business');
+const { getBuyerOverview } = require('../services/analytics/buyerAnalyticsService');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -135,8 +136,18 @@ const getPublicProfile = async (req, res) => {
         }
 
         let businesses = [];
+        let trustData = null;
+        let overview = null;
+
         if (user.role === 'seller') {
             businesses = await Business.find({ owner: user._id });
+        } else if (user.role === 'buyer') {
+            try {
+                overview = await getBuyerOverview(user._id, 'all');
+                trustData = overview.trustScore;
+            } catch (error) {
+                console.error("Failed to fetch buyer trust data for public profile", error);
+            }
         }
 
         res.status(200).json({
@@ -149,7 +160,11 @@ const getPublicProfile = async (req, res) => {
                 companyName: user.companyName,
                 description: user.description,
                 email: user.email,
-                phone: user.phone
+                phone: user.phone,
+                trustScore: trustData?.totalScore || null,
+                masteryBadges: user.masteryBadges || 0,
+                achievements: overview?.achievements || [],
+                milestones: overview?.milestones || []
             },
             businesses
         });

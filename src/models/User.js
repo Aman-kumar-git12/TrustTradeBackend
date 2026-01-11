@@ -35,6 +35,14 @@ const userSchema = mongoose.Schema({
     description: {
         type: String,
     },
+    masteryBadges: {
+        type: Number,
+        default: 0
+    },
+    isEliteEligible: {
+        type: Boolean,
+        default: true
+    },
 }, {
     timestamps: true,
 });
