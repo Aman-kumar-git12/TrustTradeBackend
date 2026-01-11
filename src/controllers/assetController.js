@@ -120,9 +120,60 @@ const getMyListings = async (req, res) => {
     }
 };
 
+const AssetView = require('../models/AssetView');
+
+// @desc    Record a view for an asset
+// @route   POST /api/assets/:id/view
+// @access  Public
+const recordAssetView = async (req, res) => {
+    try {
+        const assetId = req.params.id;
+        const userId = req.user ? req.user._id : null; // Can be null if guest
+        const ip = req.ip || req.connection.remoteAddress;
+
+        // Check if there is already a view record for this (Asset + User/IP)
+        // Since we have a TTL index on `viewedAt`, old records disappear automatically.
+        // We just need to check if one exists > it means we are in the "timeout" window.
+
+        const query = { asset: assetId, ip: ip };
+        if (userId) {
+            query.viewer = userId;
+        }
+
+        const existingView = await AssetView.findOne(query);
+
+        if (existingView) {
+            // Already viewed in the last hour
+            const currentAsset = await Asset.findById(assetId).select('views');
+            return res.status(200).json({ views: currentAsset ? currentAsset.views : 0 });
+        }
+
+        // No recent view found -> Record it
+        await AssetView.create({
+            asset: assetId,
+            viewer: userId,
+            ip: ip
+        });
+
+        // Increment asset view count
+        const updatedAsset = await Asset.findByIdAndUpdate(
+            assetId,
+            { $inc: { views: 1 } },
+            { new: true }
+        ).select('views');
+
+        res.status(200).json({ views: updatedAsset.views });
+
+    } catch (error) {
+        console.error("Error recording view:", error);
+        res.status(500).json({ message: "Failed to record view" });
+    }
+};
+
 module.exports = {
     getAssets,
     getAssetById,
     createAsset,
     getMyListings,
+    recordAssetView
 };

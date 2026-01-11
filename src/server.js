@@ -25,7 +25,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
-console.log("Server restarting..."); // Trigger restart
+console.log("Server restarting... (Fix applied)"); // Trigger restart
 
 // Cloudinary Routes
 app.use("/api/images", cloudinaryRoutes);

@@ -4,6 +4,7 @@ const {
     getAssets,
     getAssetById,
     createAsset,
+    recordAssetView
 } = require('../controllers/assetController');
 const {
     getSellerAssets,
@@ -23,6 +24,9 @@ router.route('/my-listings').get(protect, getSellerAssets);
 router.route('/my-listings/:id')
     .get(protect, getSellerAssetDetails)
     .put(protect, updateAsset); // Add PUT for update
+
+// View Count Route - Public (Rate limited by controller)
+router.route('/:id/view').post(recordAssetView);
 
 router.route('/:id/status').put((req, res, next) => {
     console.log("Asset Route HIT for PUT status. ID:", req.params.id);

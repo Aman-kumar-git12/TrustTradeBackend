@@ -2,7 +2,13 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Business = require('../models/Business');
+const Interest = require('../models/Interest');
+const Sales = require('../models/Sales');
 const { getBuyerOverview } = require('../services/analytics/buyerAnalyticsService');
+
+// ... (existing code)
+
+
 
 // Generate JWT
 const generateToken = (id) => {
@@ -173,10 +179,33 @@ const getPublicProfile = async (req, res) => {
     }
 };
 
+const getActivityCounts = async (req, res) => {
+    try {
+        let interestsCount = 0;
+        let ordersCount = 0;
+
+        if (req.user.role === 'buyer') {
+            interestsCount = await Interest.countDocuments({ buyer: req.user._id });
+            ordersCount = await Sales.countDocuments({ buyer: req.user._id, isDeleted: { $ne: true } });
+        } else if (req.user.role === 'seller') {
+            interestsCount = await Interest.countDocuments({ seller: req.user._id });
+            ordersCount = await Sales.countDocuments({ seller: req.user._id, isDeleted: { $ne: true } });
+        }
+
+        res.status(200).json({
+            interests: interestsCount,
+            orders: ordersCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
     loginUser,
     getMe,
     updateProfile,
-    getPublicProfile
+    getPublicProfile,
+    getActivityCounts
 };
