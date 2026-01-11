@@ -23,8 +23,8 @@ const userSchema = mongoose.Schema({
     },
     mode: {
         type: String,
-        enum: ['light', 'dark'],
-        default: 'dark'
+        enum: ['light', 'dark', 'default'],
+        default: 'default'
     },
     phone: {
         type: String,

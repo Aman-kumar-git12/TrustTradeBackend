@@ -201,11 +201,44 @@ const getActivityCounts = async (req, res) => {
     }
 };
 
+// @desc    Update user theme preference
+// @route   PUT /api/auth/theme
+// @access  Private
+const updateTheme = async (req, res) => {
+    try {
+        const { mode } = req.body;
+
+        if (!['light', 'dark', 'default'].includes(mode)) {
+            return res.status(400).json({ message: 'Invalid theme mode' });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        if (user) {
+            user.mode = mode;
+            const updatedUser = await user.save();
+
+            res.status(200).json({
+                _id: updatedUser._id,
+                fullName: updatedUser.fullName,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                mode: updatedUser.mode
+            });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
     loginUser,
     getMe,
     updateProfile,
     getPublicProfile,
-    getActivityCounts
+    getActivityCounts,
+    updateTheme
 };

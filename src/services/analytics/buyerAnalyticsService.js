@@ -245,7 +245,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
             const key = `${current.getFullYear()}-${current.getMonth()}`;
             const label = current.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
             monthMap.set(key, { name: label, spent: 0, savings: 0 });
-            current.setMonth(current.setMonth() + 1);
+            current.setMonth(current.getMonth() + 1);
         }
         filteredOrders.forEach(order => {
             const d = new Date(order.dealDate || order.createdAt);
