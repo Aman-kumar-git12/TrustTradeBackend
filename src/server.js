@@ -11,19 +11,22 @@ connectDB();
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel) for Secure cookies to work
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL?.trim()
+].filter(Boolean);
 
-// Middleware
-const corsOptions = {
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5002', process.env.FRONTEND_URL].filter(Boolean), // Explicitly whitelist frontend
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true,
-    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-};
-
-app.use(cors(corsOptions));
-// Enable pre-flight requests for all routes using Regex to avoid PathError, using SAMU options
-app.options(/.*/, cors(corsOptions));
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow Postman
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS blocked: " + origin));
+  },
+  credentials: true
+}));
 
 app.use(express.json());
 const cookieParser = require('cookie-parser');

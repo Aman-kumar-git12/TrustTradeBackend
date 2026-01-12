@@ -85,11 +85,11 @@ const loginUser = async (req, res) => {
     if (user && (await user.matchPassword(password))) {
         const token = generateToken(user.id);
 
-        res.cookie('jwt', token, {
+        res.cookie("token", token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            secure: true,              // MUST be true on https
+            sameSite: "none",          // MUST be none for cross-domain
+            maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
         res.json({
