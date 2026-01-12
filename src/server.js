@@ -25,6 +25,8 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
 console.log("Server restarting... (Fix applied)"); // Trigger restart
 
 // Cloudinary Routes

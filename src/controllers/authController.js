@@ -45,12 +45,22 @@ const registerUser = async (req, res) => {
         });
 
         if (user) {
+            const token = generateToken(user.id);
+
+            // Set cookie
+            res.cookie('jwt', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
+
             res.status(201).json({
                 _id: user.id,
                 fullName: user.fullName,
                 email: user.email,
                 role: user.role,
-                token: generateToken(user.id),
+                token // Optional: keep sending token for now if needed by client initially
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
@@ -58,7 +68,6 @@ const registerUser = async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
-
 };
 
 // @desc    Authenticate a user
@@ -71,12 +80,21 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+        const token = generateToken(user.id);
+
+        res.cookie('jwt', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
         res.json({
             _id: user.id,
             fullName: user.fullName,
             email: user.email,
             role: user.role,
-            token: generateToken(user.id),
+            token
         });
     } else {
         res.status(401).json({ message: 'Invalid credentials' });
@@ -110,6 +128,14 @@ const updateProfile = async (req, res) => {
             }
 
             const updatedUser = await user.save();
+            const token = generateToken(updatedUser._id);
+
+            res.cookie('jwt', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            });
 
             res.json({
                 _id: updatedUser._id,
@@ -120,7 +146,7 @@ const updateProfile = async (req, res) => {
                 phone: updatedUser.phone,
                 avatarUrl: updatedUser.avatarUrl,
                 description: updatedUser.description,
-                token: generateToken(updatedUser._id),
+                token
             });
         } else {
             res.status(404).json({ message: 'User not found' });
@@ -233,6 +259,17 @@ const updateTheme = async (req, res) => {
     }
 };
 
+// @desc    Logout user / clear cookie
+// @route   POST /api/auth/logout
+// @access  Public
+const logoutUser = (req, res) => {
+    res.cookie('jwt', '', {
+        httpOnly: true,
+        expires: new Date(0)
+    });
+    res.status(200).json({ message: 'Logged out successfully' });
+};
+
 module.exports = {
     registerUser,
     loginUser,
@@ -240,5 +277,6 @@ module.exports = {
     updateProfile,
     getPublicProfile,
     getActivityCounts,
-    updateTheme
+    updateTheme,
+    logoutUser
 };

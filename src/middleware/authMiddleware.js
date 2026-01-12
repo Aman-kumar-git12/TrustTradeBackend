@@ -27,6 +27,23 @@ const protect = async (req, res, next) => {
         }
     }
 
+    if (!token && req.cookies && req.cookies.jwt) {
+        try {
+            token = req.cookies.jwt;
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            req.user = await User.findById(decoded.id).select('-password');
+            if (!req.user) {
+                return res.status(401).json({ message: 'Not authorized, user not found' });
+            }
+            next();
+            return; // Important to return here to prevent falling through
+        } catch (error) {
+            console.error(error);
+            res.status(401).json({ message: 'Not authorized, token failed' });
+            return;
+        }
+    }
+
     if (!token) {
         res.status(401).json({ message: 'Not authorized, no token' });
     }
