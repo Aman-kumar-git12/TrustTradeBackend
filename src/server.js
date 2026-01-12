@@ -11,21 +11,10 @@ connectDB();
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel) for Secure cookies to work
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  process.env.FRONTEND_URL?.trim()
-].filter(Boolean);
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow Postman
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("CORS blocked: " + origin));
-  },
-  credentials: true
+  origin: ['http://localhost:5173', process.env.FRONTEND_URL],   // only allow your frontend
+  credentials: true                  // allow cookies
 }));
 
 app.use(express.json());

@@ -33,9 +33,9 @@ const protect = async (req, res, next) => {
         }
     }
 
-    if (!token && req.cookies && req.cookies.jwt) {
+    if (!token && req.cookies && (req.cookies.jwt || req.cookies.token)) {
         try {
-            token = req.cookies.jwt;
+            token = req.cookies.jwt || req.cookies.token;
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = await User.findById(decoded.id).select('-password');
             if (!req.user) {
