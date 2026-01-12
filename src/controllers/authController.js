@@ -108,6 +108,7 @@ const loginUser = async (req, res) => {
 // @route   GET /api/auth/me
 // @access  Private
 const getMe = async (req, res) => {
+    console.log("getMe hit");
     res.status(200).json(req.user);
 };
 
