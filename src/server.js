@@ -10,6 +10,7 @@ const cloudinaryRoutes = require("./cloudinary/routes.js");
 connectDB();
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel) for Secure cookies to work
 
 // Middleware
 const corsOptions = {
