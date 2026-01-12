@@ -3,6 +3,12 @@ const User = require('../models/User');
 
 const protect = async (req, res, next) => {
     console.log("Protect Middleware HIT. Method:", req.method, "URL:", req.originalUrl);
+    console.log("--------------------------------------------------");
+    console.log("Headers Origin:", req.headers.origin);
+    console.log("Headers CookieRaw:", req.headers.cookie);
+    console.log("Parsed Cookies:", req.cookies);
+    console.log("Protocol:", req.protocol, "Secure:", req.secure);
+    console.log("--------------------------------------------------");
     let token;
 
     if (

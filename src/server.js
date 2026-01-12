@@ -13,7 +13,7 @@ const app = express();
 
 // Middleware
 const corsOptions = {
-    origin: true, // Reflect request origin
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:5002', process.env.FRONTEND_URL].filter(Boolean), // Explicitly whitelist frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
