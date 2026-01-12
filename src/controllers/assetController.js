@@ -38,7 +38,8 @@ const getAssets = async (req, res) => {
         }
 
         let assets = await Asset.find(query)
-            .populate('seller', 'fullName companyName');
+            .populate('seller', 'fullName companyName')
+            .populate('business', 'businessName');
 
         // Randomize order
         for (let i = assets.length - 1; i > 0; i--) {
