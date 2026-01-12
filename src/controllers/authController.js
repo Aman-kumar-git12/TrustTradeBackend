@@ -48,7 +48,7 @@ const registerUser = async (req, res) => {
             const token = generateToken(user.id);
 
             // Set cookie
-            res.cookie('jwt', token, {
+            res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -87,8 +87,8 @@ const loginUser = async (req, res) => {
 
         res.cookie("token", token, {
             httpOnly: true,
-            secure: true,              // MUST be true on https
-            sameSite: "none",          // MUST be none for cross-domain
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -134,7 +134,7 @@ const updateProfile = async (req, res) => {
             const updatedUser = await user.save();
             const token = generateToken(updatedUser._id);
 
-            res.cookie('jwt', token, {
+            res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -267,7 +267,7 @@ const updateTheme = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 const logoutUser = (req, res) => {
-    res.cookie('jwt', '', {
+    res.cookie('token', '', {
         httpOnly: true,
         expires: new Date(0)
     });
