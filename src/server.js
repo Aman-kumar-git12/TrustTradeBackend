@@ -12,9 +12,21 @@ connectDB();
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel) for Secure cookies to work
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', process.env.FRONTEND_URL],   // only allow your frontend
-  credentials: true                  // allow cookies
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
 }));
 
 app.use(express.json());
@@ -27,7 +39,7 @@ app.use("/api/images", cloudinaryRoutes);
 
 // Routes (Placeholders for now)
 app.get('/', (req, res) => {
-    res.send('AssetDirect API is running...');
+  res.send('AssetDirect API is running...');
 });
 
 const authRoutes = require('./routes/authRoutes');
@@ -55,5 +67,5 @@ app.use('/api/analytics', analyticsRoutes);
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
-    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
