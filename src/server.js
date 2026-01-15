@@ -15,17 +15,12 @@ app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel) for Secur
 const allowedOrigins = [
   'http://localhost:5173',
   process.env.FRONTEND_URL
-].filter(Boolean);
+].filter(Boolean).map(url => url.replace(/\/$/, ""));
+
+console.log("Allowed Origins:", allowedOrigins);
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
+  origin: allowedOrigins,
   credentials: true
 }));
 
@@ -37,7 +32,10 @@ console.log("Server restarting... (Fix applied)"); // Trigger restart
 // Cloudinary Routes
 app.use("/api/images", cloudinaryRoutes);
 
-// Routes (Placeholders for now)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/', (req, res) => {
   res.send('AssetDirect API is running...');
 });
