@@ -1,6 +1,7 @@
 const Sales = require('../../models/Sale');
 const Asset = require('../../models/Asset');
 const Business = require('../../models/Business');
+const Interest = require('../../models/Interest');
 
 // Helper to get start date
 const getStartDate = (range) => {
@@ -25,15 +26,35 @@ const getOverviewStats = async (businessId, ownerId, range = '1m') => {
     const assetIds = assets.map(a => a._id);
     const startDate = getStartDate(range);
 
-    // Fetch Sales
-    const sales = await Sales.find({
+    // Fetch Interests for filtering
+    const allInterests = await Interest.find({ asset: { $in: assetIds } });
+
+    // Fetch all Sales related to these assets
+    const allSales = await Sales.find({
         asset: { $in: assetIds },
         isDeleted: { $ne: true },
-        status: 'sold',
+        status: { $in: ['sold', 'completed'] },
         dealDate: { $gte: startDate }
     }).populate('asset');
 
+    // Fetch manual sales specifically to count "Green" rows
+    // In our system, manual sales have no razorpayPaymentId and status 'sold'
+    const manualSales = allSales.filter(s => !s.razorpayPaymentId && s.status === 'sold');
+    const manualSaleInterestIds = new Set(manualSales.map(s => s.interest?.toString()));
+
     // --- KPI Calculations ---
+    // Sold Business = Green rows = Manually confirmed sales
+    const soldCount = manualSaleInterestIds.size;
+
+    // Active Leads = White rows = (No sale OR Online payment only) AND not unsold
+    const activeLeads = allInterests.filter(interest => {
+        const isUnsold = interest.salesStatus === 'unsold';
+        const isGreen = manualSaleInterestIds.has(interest._id.toString());
+        return !isUnsold && !isGreen;
+    }).length;
+
+    // Revenue = All successful sales (Online + Manual)
+    const sales = allSales;
     let totalRevenue = 0;
     let totalCost = 0;
     let totalProfit = 0;
@@ -278,7 +299,12 @@ const getOverviewStats = async (businessId, ownerId, range = '1m') => {
         },
         performers,
         trends,
-        chartData
+        chartData,
+        // Root-level fields for Seller Dashboard summary cards
+        totalRevenue,
+        activeLeads,
+        soldCount, // Count of Green rows (Finalized)
+        successRate: (activeLeads + soldCount) > 0 ? Math.round((soldCount / (activeLeads + soldCount)) * 100) : 0
     };
 };
 

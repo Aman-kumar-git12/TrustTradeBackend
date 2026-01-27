@@ -55,6 +55,9 @@ const saleSchema = mongoose.Schema({
     },
     notes: {
         type: String,
+    },
+    razorpayPaymentId: {
+        type: String,
     }
 }, {
     timestamps: true,

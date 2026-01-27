@@ -45,6 +45,7 @@ const assetRoutes = require('./routes/assetRoutes');
 const interestRoutes = require('./routes/interestRoutes');
 const businessRoutes = require('./routes/seller/businessRoutes');
 const businessDashboardRoutes = require('./routes/seller/dashboardRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/assets', assetRoutes);
@@ -60,6 +61,7 @@ const analyticsRoutes = require('./routes/seller/analyticsRoutes');
 app.use('/api/sales', salesRoutes);
 app.use('/api/analytics/buyer', buyerAnalyticsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use("/api/payment", paymentRoutes);
 
 
 const PORT = process.env.PORT || 5001;

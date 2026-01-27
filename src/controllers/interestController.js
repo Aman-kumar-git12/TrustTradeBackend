@@ -8,8 +8,8 @@ const createInterest = async (req, res) => {
     const { assetId, message, status } = req.body;
 
     // Optional status validation
-    const validInitialStatuses = ['pending', 'negotiating'];
-    const finalStatus = validInitialStatuses.includes(status) ? status : 'pending';
+    const validInitialStatuses = ['negotiating'];
+    const finalStatus = validInitialStatuses.includes(status) ? status : 'negotiating';
 
     try {
         const asset = await Asset.findById(assetId);
@@ -83,7 +83,7 @@ const getBuyerInterests = async (req, res) => {
                 const matchesMaxPrice = !maxPrice || asset.price <= parseFloat(maxPrice);
 
                 // Status match
-                const matchesStatus = !status || item.status === status;
+                const matchesStatus = !status || status.split(',').includes(item.status);
 
                 // Condition match
                 const matchesCondition = !condition || asset.condition === condition;
@@ -200,8 +200,8 @@ const deleteInterest = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to delete this interest' });
         }
 
-        // Only allow deletion if status is pending or negotiating
-        if (!['pending', 'negotiating'].includes(interest.status)) {
+        // Only allow deletion if status is negotiating
+        if (interest.status !== 'negotiating') {
             return res.status(400).json({ message: `Cannot delete a record that is already ${interest.status}` });
         }
 

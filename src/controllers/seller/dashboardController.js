@@ -222,14 +222,22 @@ const getBusinessLeads = async (req, res) => {
 
         // Map sales status to leads
         const leadsWithStatus = leads.map(lead => {
-            const sale = sales.find(s => s.interest && s.interest.toString() === lead._id.toString());
+            const leadSales = sales.filter(s => s.interest && s.interest.toString() === lead._id.toString());
+            const onlineSale = leadSales.find(s => s.razorpayPaymentId);
+            const manualSale = leadSales.find(s => !s.razorpayPaymentId && s.status === 'sold');
+            const unsoldSale = leadSales.find(s => s.status === 'unsold');
+
+            const primarySale = manualSale || onlineSale || unsoldSale || leadSales[0];
+
             return {
                 ...lead.toObject(),
-                salesStatus: sale ? sale.status : null, // 'sold' or 'unsold'
-                saleId: sale ? sale._id : null,
-                soldQuantity: sale ? sale.quantity : null,
-                soldPrice: sale ? sale.price : null,
-                soldTotalAmount: sale ? sale.totalAmount : null
+                salesStatus: primarySale ? primarySale.status : null, // 'sold' or 'unsold'
+                saleId: primarySale ? primarySale._id : null,
+                isOnlinePayment: !!onlineSale,
+                isManuallyMarkedSold: !!manualSale,
+                soldQuantity: primarySale ? primarySale.quantity : null,
+                soldPrice: primarySale ? primarySale.price : null,
+                soldTotalAmount: primarySale ? primarySale.totalAmount : null
             };
         });
 

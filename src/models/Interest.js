@@ -21,8 +21,8 @@ const interestSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'accepted', 'rejected', 'negotiating'],
-        default: 'pending',
+        enum: ['negotiating', 'accepted', 'rejected'],
+        default: 'negotiating',
     },
     quantity: {
         type: Number,
