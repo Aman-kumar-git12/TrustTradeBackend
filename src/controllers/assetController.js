@@ -76,7 +76,9 @@ const getAssets = async (req, res) => {
 // @access  Public
 const getAssetById = async (req, res) => {
     try {
-        const asset = await Asset.findById(req.params.id).populate('seller', 'fullName companyName email');
+        const asset = await Asset.findById(req.params.id)
+            .populate('seller', 'fullName companyName email')
+            .populate('business', 'businessName');
 
         if (asset) {
             res.status(200).json(asset);

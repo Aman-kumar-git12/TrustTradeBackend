@@ -97,6 +97,10 @@ const deleteBusiness = async (req, res) => {
 // @access  Public
 const getBusinessById = async (req, res) => {
     try {
+        if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ message: 'Invalid business ID format' });
+        }
+
         const business = await Business.findById(req.params.id).populate('owner', 'fullName avatarUrl email phone');
 
         if (!business) {
@@ -105,6 +109,7 @@ const getBusinessById = async (req, res) => {
 
         res.status(200).json(business);
     } catch (error) {
+        console.error("Error in getBusinessById:", error);
         res.status(500).json({ message: error.message });
     }
 };
