@@ -8,23 +8,39 @@ const Asset = require('../models/Asset');
 // @access  Public
 const getAssets = async (req, res) => {
     try {
-        const { category, search, minPrice, maxPrice, condition } = req.query;
+        const { category, search, minPrice, maxPrice, condition, limit = 9, excludeIds } = req.query;
 
-        let query = { status: 'active' };
+        let matchStage = { status: 'active' };
+
+        // Exclude IDs (for infinite scroll to avoid duplicates)
+        if (excludeIds) {
+            const idsToExclude = excludeIds.split(',').map(id => {
+                // Validate hex string before casting to ObjectId to avoid errors
+                if (id.match(/^[0-9a-fA-F]{24}$/)) {
+                    const mongoose = require('mongoose');
+                    return new mongoose.Types.ObjectId(id);
+                }
+                return null;
+            }).filter(id => id !== null);
+
+            if (idsToExclude.length > 0) {
+                matchStage._id = { $nin: idsToExclude };
+            }
+        }
 
         // Category Filter
         if (category) {
-            query.category = category;
+            matchStage.category = category;
         }
 
         // Condition Filter
         if (condition) {
-            query.condition = condition;
+            matchStage.condition = condition;
         }
 
         // Search Filter (Title or Description)
         if (search) {
-            query.$or = [
+            matchStage.$or = [
                 { title: { $regex: search, $options: 'i' } },
                 { description: { $regex: search, $options: 'i' } }
             ];
@@ -32,23 +48,25 @@ const getAssets = async (req, res) => {
 
         // Price Filter
         if (minPrice || maxPrice) {
-            query.price = {};
-            if (minPrice) query.price.$gte = Number(minPrice);
-            if (maxPrice) query.price.$lte = Number(maxPrice);
+            matchStage.price = {};
+            if (minPrice) matchStage.price.$gte = Number(minPrice);
+            if (maxPrice) matchStage.price.$lte = Number(maxPrice);
         }
 
-        let assets = await Asset.find(query)
-            .populate('seller', 'fullName companyName')
-            .populate('business', 'businessName');
+        const assetsSample = await Asset.aggregate([
+            { $match: matchStage },
+            { $sample: { size: Number(limit) } }
+        ]);
 
-        // Randomize order
-        for (let i = assets.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [assets[i], assets[j]] = [assets[j], assets[i]];
-        }
+        // Populate the results (aggregation doesn't populate automatically)
+        const assets = await Asset.populate(assetsSample, [
+            { path: 'seller', select: 'fullName companyName' },
+            { path: 'business', select: 'businessName' }
+        ]);
 
         res.status(200).json(assets);
     } catch (error) {
+        console.error("Error fetching assets:", error);
         res.status(500).json({ message: error.message });
     }
 };
