@@ -1,7 +1,7 @@
 const Asset = require('../../models/Asset');
 const Interest = require('../../models/Interest');
 const Business = require('../../models/Business');
-const Sales = require('../../models/Sales');
+const Sales = require('../../models/Sale');
 
 // @desc    Get dashboard stats for a specific business
 // @route   GET /api/dashboard/business/:businessId/stats
@@ -67,7 +67,7 @@ const getBusinessStats = async (req, res) => {
             const monthStat = monthlySales.find(m => m.monthIndex === monthIndex && m.year === year);
             if (monthStat) {
                 monthStat.count += 1;
-                monthStat.revenue += sale.finalPrice;
+                monthStat.revenue += sale.totalAmount;
             }
         });
 
@@ -83,7 +83,7 @@ const getBusinessStats = async (req, res) => {
                 conversionRate: totalViews > 0 ? ((totalLeads / totalViews) * 100).toFixed(1) : 0,
                 sellingPriceTrend: businessSales.map(s => ({
                     date: s.dealDate,
-                    price: s.finalPrice
+                    price: s.totalAmount
                 })).sort((a, b) => new Date(a.date) - new Date(b.date))
             },
             leadInsights: {
@@ -229,7 +229,7 @@ const getBusinessLeads = async (req, res) => {
                 saleId: sale ? sale._id : null,
                 soldQuantity: sale ? sale.quantity : null,
                 soldPrice: sale ? sale.price : null,
-                soldTotalAmount: sale ? sale.finalPrice : null
+                soldTotalAmount: sale ? sale.totalAmount : null
             };
         });
 

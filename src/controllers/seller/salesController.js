@@ -28,7 +28,8 @@ const createSale = async (req, res) => {
             interest: interestId,
             asset: assetId,
             buyer: buyerId,
-            seller: sellerId
+            seller: sellerId,
+            isDeleted: isDeleted
         });
 
         const savedSale = await newSale.save();

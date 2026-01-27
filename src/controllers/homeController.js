@@ -1,4 +1,4 @@
-const Sales = require('../models/Sales');
+const Sales = require('../models/Sale');
 const Asset = require('../models/Asset');
 const Business = require('../models/Business');
 
@@ -31,7 +31,7 @@ const getHomeStats = async (req, res) => {
                 $group: {
                     _id: '$seller', // Group by Seller User ID
                     sellerName: { $first: '$sellerDetails.name' },
-                    totalProfit: { $sum: '$finalPrice' }
+                    totalProfit: { $sum: '$totalAmount' }
                 }
             },
             { $sort: { totalProfit: -1 } },

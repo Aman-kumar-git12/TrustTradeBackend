@@ -1,4 +1,4 @@
-const Sales = require('../../models/Sales');
+const Sales = require('../../models/Sale');
 const Asset = require('../../models/Asset');
 const Business = require('../../models/Business');
 
@@ -29,7 +29,7 @@ const getInsights = async (businessId, ownerId) => {
             });
         }
         const entry = buyerMap.get(buyerId);
-        const price = sale.price || sale.finalPrice || 0;
+        const price = sale.price || sale.totalAmount || 0;
 
         entry.totalSpend += price;
         entry.totalOrders += 1;

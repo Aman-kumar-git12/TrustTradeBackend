@@ -1,4 +1,4 @@
-const Sales = require('../../models/Sales');
+const Sales = require('../../models/Sale');
 const Interest = require('../../models/Interest');
 const Asset = require('../../models/Asset');
 const User = require('../../models/User');
@@ -77,7 +77,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
     const categorySpend = new Map();
 
     filteredOrders.forEach(order => {
-        const paidPrice = order.price || order.finalPrice || 0;
+        const paidPrice = order.price || order.totalAmount || 0;
         const originalPrice = order.asset?.price || paidPrice;
         const savings = Math.max(0, originalPrice - paidPrice);
 
@@ -107,7 +107,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
 
     const reliability = allTimeClosed > 0 ? (allTimeAccepted / allTimeClosed) * 100 : 0;
     const activity = allTimeInterests.length;
-    const volume = allTimeOrders.reduce((sum, o) => sum + (o.price || o.finalPrice || 0), 0);
+    const volume = allTimeOrders.reduce((sum, o) => sum + (o.price || o.totalAmount || 0), 0);
     const joinDate = user ? new Date(user.createdAt) : new Date();
     const tenure = Math.floor((new Date() - joinDate) / (1000 * 60 * 60 * 24));
 
@@ -148,7 +148,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
 
     // 3. Negotiation Pro (3+ negotiated deals)
     // Check sales where finalPrice < original price (asset.price)
-    const negotiatedDeals = allTimeOrders.filter(o => o.finalPrice && o.asset?.price && o.finalPrice < o.asset.price).length;
+    const negotiatedDeals = allTimeOrders.filter(o => o.totalAmount && o.asset?.price && o.totalAmount < o.asset.price).length;
     if (negotiatedDeals >= 3) {
         achievements.push({ id: 'negotiation_pro', label: 'Negotiation Pro', icon: 'TrendingUp', desc: 'Completed 3 successful negotiated deals' });
     }
@@ -206,7 +206,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
             const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
             if (hourMap.has(key)) {
                 const entry = hourMap.get(key);
-                const paid = (order.price || order.finalPrice || 0);
+                const paid = (order.price || order.totalAmount || 0);
                 const orig = order.asset?.price || paid;
                 entry.spent += paid;
                 entry.savings += Math.max(0, orig - paid);
@@ -228,7 +228,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
             const key = d.toISOString().split('T')[0];
             if (dayMap.has(key)) {
                 const entry = dayMap.get(key);
-                const paid = (order.price || order.finalPrice || 0);
+                const paid = (order.price || order.totalAmount || 0);
                 const orig = order.asset?.price || paid;
                 entry.spent += paid;
                 entry.savings += Math.max(0, orig - paid);
@@ -252,7 +252,7 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
             const key = `${d.getFullYear()}-${d.getMonth()}`;
             if (monthMap.has(key)) {
                 const entry = monthMap.get(key);
-                const paid = (order.price || order.finalPrice || 0);
+                const paid = (order.price || order.totalAmount || 0);
                 const orig = order.asset?.price || paid;
                 entry.spent += paid;
                 entry.savings += Math.max(0, orig - paid);

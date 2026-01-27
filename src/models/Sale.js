@@ -36,6 +36,18 @@ const saleSchema = mongoose.Schema({
         type: Number,
         required: true,
     },
+    dealDate: {
+        type: Date,
+        default: Date.now,
+    },
+    negotiationDuration: {
+        type: Number, // In hours or days
+        default: 0
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
+    },
     status: {
         type: String,
         enum: ['sold', 'unsold', 'completed', 'refunded', 'disputed'],

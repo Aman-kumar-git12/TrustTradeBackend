@@ -1,4 +1,4 @@
-const Sales = require('../../models/Sales');
+const Sales = require('../../models/Sale');
 const Asset = require('../../models/Asset');
 const Interest = require('../../models/Interest');
 
@@ -26,7 +26,7 @@ const getAllPerformance = async (businessId, sortBy = 'createdAt', order = 'desc
             }
         }
 
-        const soldPrice = assetSale ? (assetSale.price || assetSale.finalPrice) : null;
+        const soldPrice = assetSale ? (assetSale.price || assetSale.totalAmount) : null;
         const profit = soldPrice ? (soldPrice - (asset.costPrice || 0)) : null;
         const margin = soldPrice ? ((profit / soldPrice) * 100) : null;
 
@@ -110,13 +110,13 @@ const getDetails = async (assetId, range = 'all') => {
 
     const validMarketSales = marketSales.filter(s => s.asset);
     const marketAvgPrice = validMarketSales.length > 0
-        ? validMarketSales.reduce((sum, s) => sum + (s.price || s.finalPrice || 0), 0) / validMarketSales.length
+        ? validMarketSales.reduce((sum, s) => sum + (s.price || s.totalAmount || 0), 0) / validMarketSales.length
         : asset.price;
 
     // Aggregate Sales Metrics
     // Aggregate Sales Metrics
     const totalOrders = sales.length;
-    const totalRevenue = sales.reduce((sum, sale) => sum + (sale.finalPrice || 0), 0);
+    const totalRevenue = sales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
     const totalCost = totalOrders * (asset.costPrice || 0);
     const totalProfit = totalRevenue - totalCost;
     const avgProfit = totalOrders > 0 ? Math.round(totalProfit / totalOrders) : 0;
@@ -145,7 +145,7 @@ const getDetails = async (assetId, range = 'all') => {
                 // negotiationDuration is in days (float)
                 totalTimeNegToSold += s.negotiationDuration;
                 negotiatedSalesCount++;
-                totalNegotiatedPrice += (s.finalPrice || 0);
+                totalNegotiatedPrice += (s.totalAmount || 0);
             }
         }
     });
@@ -185,7 +185,7 @@ const getDetails = async (assetId, range = 'all') => {
             const date = s.dealDate.toISOString().split('T')[0];
             const current = revenueMap.get(date) || { revenue: 0, profit: 0 };
 
-            const salePrice = s.finalPrice || 0;
+            const salePrice = s.totalAmount || 0;
             const saleCost = asset.costPrice || 0;
             const saleProfit = salePrice - saleCost;
 

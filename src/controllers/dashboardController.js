@@ -1,6 +1,6 @@
 const Asset = require('../models/Asset');
 const Interest = require('../models/Interest');
-const Sales = require('../models/Sales');
+const Sales = require('../models/Sale');
 const mongoose = require('mongoose');
 
 // @desc    Get Seller Dashboard Statistics
@@ -23,11 +23,11 @@ const getSellerDashboardStats = async (req, res) => {
         const recentSales = await Sales.find({ seller: sellerId })
             .sort({ dealDate: -1 })
             .limit(6)
-            .select('finalPrice dealDate');
+            .select('totalAmount dealDate');
 
         const sellingPriceTrend = recentSales.map(sale => ({
             date: sale.dealDate,
-            price: sale.finalPrice
+            price: sale.totalAmount
         })).reverse();
 
 
@@ -65,7 +65,7 @@ const getSellerDashboardStats = async (req, res) => {
                 $group: {
                     _id: { $month: "$dealDate" },
                     count: { $sum: 1 },
-                    revenue: { $sum: "$finalPrice" }
+                    revenue: { $sum: "$totalAmount" }
                 }
             },
             { $sort: { "_id": 1 } }

@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const Interest = require('../models/Interest');
-const Sales = require('../models/Sales');
+const Sales = require('../models/Sale');
 const { getBuyerOverview } = require('../services/analytics/buyerAnalyticsService');
 
 // ... (existing code)
@@ -21,7 +21,7 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
-    const { fullName, email, password, role, companyName } = req.body;
+    const { fullName, email, password, role } = req.body;
 
     if (!fullName || !email || !password || !role) {
         return res.status(400).json({ message: 'Please add all fields' });
@@ -41,7 +41,7 @@ const registerUser = async (req, res) => {
             email,
             password,
             role,
-            companyName
+            phone: "9999999999"
         });
 
         if (user) {

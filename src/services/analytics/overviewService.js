@@ -1,4 +1,4 @@
-const Sales = require('../../models/Sales');
+const Sales = require('../../models/Sale');
 const Asset = require('../../models/Asset');
 const Business = require('../../models/Business');
 
@@ -45,7 +45,7 @@ const getOverviewStats = async (businessId, ownerId, range = '1m') => {
     const locationStats = new Map();
 
     sales.forEach(sale => {
-        const price = sale.price || sale.finalPrice || 0;
+        const price = sale.price || sale.totalAmount || 0;
         const cost = sale.asset?.costPrice || 0;
         const listingPrice = sale.asset?.price || 0;
         const profit = price - cost;
@@ -153,7 +153,7 @@ const getOverviewStats = async (businessId, ownerId, range = '1m') => {
             const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
             if (hourMap.has(key)) {
                 const entry = hourMap.get(key);
-                const price = (sale.price || sale.finalPrice || 0);
+                const price = (sale.price || sale.totalAmount || 0);
                 const cost = (sale.asset?.costPrice || 0);
                 entry.revenue += price;
                 entry.profit += (price - cost);
@@ -178,7 +178,7 @@ const getOverviewStats = async (businessId, ownerId, range = '1m') => {
             const key = d.toISOString().split('T')[0];
             if (dayMap.has(key)) {
                 const entry = dayMap.get(key);
-                const price = (sale.price || sale.finalPrice || 0);
+                const price = (sale.price || sale.totalAmount || 0);
                 const cost = (sale.asset?.costPrice || 0);
                 entry.revenue += price;
                 entry.profit += (price - cost);
@@ -210,7 +210,7 @@ const getOverviewStats = async (businessId, ownerId, range = '1m') => {
             const key = `${d.getFullYear()}-${d.getMonth()}`;
             if (monthMap.has(key)) {
                 const entry = monthMap.get(key);
-                const price = (sale.price || sale.finalPrice || 0);
+                const price = (sale.price || sale.totalAmount || 0);
                 const cost = (sale.asset?.costPrice || 0);
                 entry.revenue += price;
                 entry.profit += (price - cost);
