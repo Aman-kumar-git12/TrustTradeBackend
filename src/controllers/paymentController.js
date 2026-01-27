@@ -4,16 +4,19 @@ const Sale = require("../models/Sale");
 const Interest = require("../models/Interest");
 const Asset = require("../models/Asset");
 
-// Razorpay instance
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
 // CREATE ORDER
 const createOrder = async (req, res) => {
     try {
         const { amount, interestId, assetId, quantity } = req.body;
+
+        if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+            throw new Error("Razorpay keys are missing in backend configuration");
+        }
+
+        const razorpay = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET,
+        });
 
         if (!amount) {
             return res.status(400).json({ message: "Amount is required" });
