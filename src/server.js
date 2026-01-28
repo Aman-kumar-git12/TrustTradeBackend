@@ -10,30 +10,47 @@ const cloudinaryRoutes = require("./cloudinary/routes.js");
 connectDB();
 
 const app = express();
-app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel) for Secure cookies to work
+app.set('trust proxy', 1);
 
+// 1. CORS Configuration
 const allowedOrigins = [
   'http://localhost:5173',
-  process.env.FRONTEND_URL
-].filter(Boolean).map(url => url.replace(/\/$/, ""));
+  'http://127.0.0.1:5173',
+].filter(Boolean);
 
-console.log("Allowed Origins:", allowedOrigins);
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ""));
+}
 
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Cache-Control', 'Pragma']
 }));
+
+// 2. Handle preflight for all routes - cors() handles this automatically as middleware
 
 app.use(express.json());
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
-console.log("Server restarting... (Fix applied)"); // Trigger restart
+console.log("Server restarting... (CORS Fix v3 - Ultra Robust applied)");
 
 // Cloudinary Routes
 app.use("/api/images", cloudinaryRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    allowedOrigins: allowedOrigins
+  });
 });
 
 app.get('/', (req, res) => {
