@@ -119,10 +119,17 @@ const getBusinessById = async (req, res) => {
 // @access  Public
 const getBusinessAssets = async (req, res) => {
     try {
+        const { limit = 12, page = 1 } = req.query;
+        const skip = (Number(page) - 1) * Number(limit);
+
         const assets = await Asset.find({
             business: req.params.id,
             status: 'active'
-        }).populate('seller', 'fullName companyName');
+        })
+            .populate('seller', 'fullName companyName')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit));
 
         res.status(200).json(assets);
     } catch (error) {
