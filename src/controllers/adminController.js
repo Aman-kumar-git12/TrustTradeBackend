@@ -108,36 +108,7 @@ const getAllSales = async (req, res) => {
     }
 };
 
-// @desc    Update featured event
-// @route   POST /api/admin/event
-// @access  Private/Admin
-const updateFeaturedEvent = async (req, res) => {
-    try {
-        const { title, subtitle, description, imageUrl, link, expiresAt } = req.body;
 
-        // For now, we only have one featured event. So we find one and update, or create.
-        let event = await Event.findOne({ eventType: 'FEATURED EVENT' });
-
-        if (event) {
-            event.title = title || event.title;
-            event.subtitle = subtitle || event.subtitle;
-            event.description = description || event.description;
-            event.imageUrl = imageUrl || event.imageUrl;
-            event.link = link || event.link;
-            event.expiresAt = expiresAt || event.expiresAt;
-            const updatedEvent = await event.save();
-            res.json(updatedEvent);
-        } else {
-            const newEvent = await Event.create({
-                title, subtitle, description, imageUrl, link, expiresAt,
-                eventType: 'FEATURED EVENT'
-            });
-            res.status(201).json(newEvent);
-        }
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
 
 // @desc    Get featured event
 // @route   GET /api/admin/event
@@ -331,13 +302,211 @@ const getSaleById = async (req, res) => {
     }
 };
 
+// @desc    Update user profile
+// @route   PUT /api/admin/users/:id
+// @access  Private/Admin
+const updateUser = async (req, res) => {
+    try {
+        const { fullName, email, phone } = req.body;
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Check if email is already taken by another user
+        if (email && email !== user.email) {
+            const emailExists = await User.findOne({ email });
+            if (emailExists) {
+                return res.status(400).json({ message: 'Email already in use' });
+            }
+        }
+
+        user.fullName = fullName || user.fullName;
+        user.email = email || user.email;
+        user.phone = phone || user.phone;
+
+        const updatedUser = await user.save();
+        res.json({
+            _id: updatedUser._id,
+            fullName: updatedUser.fullName,
+            email: updatedUser.email,
+            phone: updatedUser.phone,
+            role: updatedUser.role
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get user's listings
+// @route   GET /api/admin/users/:id/listings
+// @access  Private/Admin
+const getUserAssets = async (req, res) => {
+    try {
+        const Asset = require('../models/Asset'); // Lazy load to avoid circular dep if any
+        const assets = await Asset.find({ seller: req.params.id })
+            .populate('business', 'businessName images')
+            .sort({ createdAt: -1 });
+        res.json(assets);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get user's incoming leads (seller side)
+// @route   GET /api/admin/users/:id/leads
+// @access  Private/Admin
+const getUserLeads = async (req, res) => {
+    try {
+        const leads = await Interest.find({ seller: req.params.id })
+            .populate('buyer', 'fullName email')
+            .populate({
+                path: 'asset',
+                select: 'title price images business',
+                populate: {
+                    path: 'business',
+                    select: 'businessName'
+                }
+            })
+            .sort({ createdAt: -1 });
+        res.json(leads);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get user's orders (buyer side)
+// @route   GET /api/admin/users/:id/orders
+// @access  Private/Admin
+const getUserOrders = async (req, res) => {
+    try {
+        const Interest = require('../models/Interest');
+        const orders = await Interest.find({ buyer: req.params.id })
+            .populate('seller', 'fullName email')
+            .populate({
+                path: 'asset',
+                select: 'title price images business',
+                populate: {
+                    path: 'business',
+                    select: 'businessName'
+                }
+            })
+            .sort({ createdAt: -1 });
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Toggle asset status (active/inactive)
+// @route   PUT /api/admin/assets/:id/toggle-status
+// @access  Private/Admin
+const toggleAssetStatus = async (req, res) => {
+    try {
+        const Asset = require('../models/Asset');
+        const asset = await Asset.findById(req.params.id);
+        if (!asset) {
+            return res.status(404).json({ message: 'Asset not found' });
+        }
+
+        asset.status = asset.status === 'active' ? 'inactive' : 'active';
+        // Add to status history if needed
+        asset.statusHistory.push({
+            status: asset.status,
+            date: new Date()
+        });
+
+        const updatedAsset = await asset.save();
+        res.json(updatedAsset);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get all businesses
+// @route   GET /api/admin/businesses
+// @access  Private/Admin
+const getAllBusinesses = async (req, res) => {
+    try {
+        const Business = require('../models/Business');
+        const businesses = await Business.find({})
+            .populate('owner', 'fullName email')
+            .sort({ createdAt: -1 });
+        res.json(businesses);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get business by ID
+// @route   GET /api/admin/businesses/:id
+// @access  Private/Admin
+const getBusinessById = async (req, res) => {
+    try {
+        const Business = require('../models/Business');
+        const business = await Business.findById(req.params.id)
+            .populate('owner', 'fullName email phone');
+
+        if (!business) {
+            return res.status(404).json({ message: 'Business not found' });
+        }
+        res.json(business);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get business products
+// @route   GET /api/admin/businesses/:id/products
+// @access  Private/Admin
+const getBusinessProducts = async (req, res) => {
+    try {
+        const Asset = require('../models/Asset');
+        const products = await Asset.find({ business: req.params.id })
+            .sort({ createdAt: -1 });
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const Activity = require('../models/Activity');
+
+// ... (existing code)
+
+// @desc    Get recent system activity
+// @route   GET /api/admin/activity
+// @access  Private/Admin
+const getRecentActivity = async (req, res) => {
+    try {
+        const activities = await Activity.find()
+            .populate('user', 'fullName')
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        res.json(activities);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getAllSales,
     getSaleById,
     updateOrderStatus,
     getAllUsers,
     updateUserRole,
-    updateFeaturedEvent,
+    updateUser,
+    getUserAssets,
+    getUserLeads,
+    getUserOrders,
+
     getFeaturedEvent,
-    getAdminStats
+    getAdminStats,
+    toggleAssetStatus,
+    getAllBusinesses,
+    getBusinessById,
+    getBusinessProducts,
+    getRecentActivity
 };

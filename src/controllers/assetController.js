@@ -1,4 +1,5 @@
 const Asset = require('../models/Asset');
+const logActivity = require('../utils/activityLogger');
 
 // @desc    Get all assets
 // @route   GET /api/assets
@@ -123,6 +124,17 @@ const createAsset = async (req, res) => {
         });
 
         const createdAsset = await asset.save();
+
+        // Log Activity to Admin
+        logActivity({
+            userId: req.user._id,
+            action: 'ASSET_LISTED',
+            description: `${req.user.fullName} listed a new asset`,
+            relatedId: createdAsset._id,
+            relatedModel: 'Asset',
+            metadata: { title: title }
+        });
+
         res.status(201).json(createdAsset);
     } catch (error) {
         res.status(400).json({ message: error.message });

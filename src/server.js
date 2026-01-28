@@ -80,6 +80,7 @@ app.use('/api/analytics/buyer', buyerAnalyticsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/support', require('./routes/supportRoutes'));
 
 
 const PORT = process.env.PORT || 5001;

@@ -3,6 +3,8 @@ const crypto = require("crypto");
 const Sale = require("../models/Sale");
 const Interest = require("../models/Interest");
 const Asset = require("../models/Asset");
+const User = require("../models/User"); // Need User model to get buyer name in processSale
+const logActivity = require('../utils/activityLogger');
 
 // CREATE ORDER
 const createOrder = async (req, res) => {
@@ -34,12 +36,23 @@ const createOrder = async (req, res) => {
             }
         });
 
+        // Log Payment Initiated
+        logActivity({
+            userId: req.user._id,
+            action: 'PAYMENT_INITIATED',
+            description: `${req.user.fullName} initiated payment of ₹${amount.toLocaleString()}`,
+            relatedId: null, // No Sale ID yet
+            relatedModel: 'Sale',
+            metadata: { amount }
+        });
+
         res.status(200).json(order);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
+// ... (verifyPayment remains mostly the same)
 // VERIFY PAYMENT
 const verifyPayment = (req, res) => {
     try {
@@ -61,6 +74,8 @@ const verifyPayment = (req, res) => {
             const { interestId, assetId, quantity } = req.body;
 
             if (interestId || assetId) {
+                // req.user is available here because it's a protected route?
+                // Wait, verifyPayment usually comes from client, which sends token. Yes.
                 processSale({
                     interestId,
                     assetId,
@@ -150,6 +165,25 @@ const processSale = async ({ interestId, assetId, quantity, buyerId, paymentId }
 
             await interest.save();
         }
+
+        // Log Activity: Payment Successful
+        logActivity({
+            userId: buyerId,
+            action: 'PAYMENT_SUCCESS',
+            description: 'Payment successful for the order',
+            relatedId: newSale._id,
+            relatedModel: 'Sale'
+        });
+
+        // Log Activity: Asset Purchased
+        logActivity({
+            userId: buyerId,
+            action: 'ASSET_PURCHASED',
+            description: 'Asset purchased and ownership transferred',
+            relatedId: interest.asset._id,
+            relatedModel: 'Asset'
+        });
+
 
     } catch (error) {
         console.error("Critical error in processSale:", error);

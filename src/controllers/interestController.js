@@ -1,5 +1,6 @@
 const Interest = require('../models/Interest');
 const Asset = require('../models/Asset');
+const logActivity = require('../utils/activityLogger');
 
 // @desc    Create new interest (Buyer shows interest)
 // @route   POST /api/interests
@@ -31,11 +32,22 @@ const createInterest = async (req, res) => {
             status: finalStatus
         });
 
+        // Log Activity: Negotiated Order Initiated
+        logActivity({
+            userId: req.user._id,
+            action: 'ORDER_INITIATED',
+            description: `${req.user.fullName} initiated a negotiated order`,
+            relatedId: interest._id,
+            relatedModel: 'Interest'
+        });
+
         res.status(201).json(interest);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
+
+// ... (getBuyerInterests and getSellerLeads)
 
 // @desc    Get interests sent by buyer
 // @route   GET /api/interests/buyer
@@ -168,10 +180,18 @@ const updateInterestStatus = async (req, res) => {
             interest.negotiationStartDate = Date.now();
         }
 
-        // If accepted or rejected, we could potentially clear negotiation start date or keep it for history. 
-        // For now, we just update the status.
-
         await interest.save();
+
+        // Log Activity: Accepted
+        if (status === 'accepted') {
+            logActivity({
+                userId: req.user._id,
+                action: 'ORDER_ACCEPTED',
+                description: `${req.user.fullName} accepted the negotiated offer`,
+                relatedId: interest._id,
+                relatedModel: 'Interest'
+            });
+        }
 
         const updatedInterest = await Interest.findById(interest._id)
             .populate('asset')

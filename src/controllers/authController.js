@@ -5,6 +5,7 @@ const Business = require('../models/Business');
 const Interest = require('../models/Interest');
 const Sales = require('../models/Sale');
 const { getBuyerOverview } = require('../services/analytics/buyerAnalyticsService');
+const logActivity = require('../utils/activityLogger');
 
 // ... (existing code)
 
@@ -47,6 +48,15 @@ const registerUser = async (req, res) => {
         if (user) {
             const token = generateToken(user.id);
 
+            // Log Activity
+            await logActivity({
+                userId: user.id,
+                action: 'USER_REGISTER',
+                description: `${user.fullName} created a new account`,
+                relatedId: user.id,
+                relatedModel: 'User'
+            });
+
             // Set cookie
             res.cookie('token', token, {
                 httpOnly: true,
@@ -84,6 +94,15 @@ const loginUser = async (req, res) => {
 
     if (user && (await user.matchPassword(password))) {
         const token = generateToken(user.id);
+
+        // Log Activity
+        logActivity({
+            userId: user.id,
+            action: 'USER_LOGIN',
+            description: `${user.fullName} logged in recently`,
+            relatedId: user.id,
+            relatedModel: 'User'
+        });
 
         res.cookie("token", token, {
             httpOnly: true,
