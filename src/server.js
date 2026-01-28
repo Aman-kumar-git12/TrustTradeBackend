@@ -62,6 +62,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/analytics/buyer', buyerAnalyticsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 
 const PORT = process.env.PORT || 5001;
