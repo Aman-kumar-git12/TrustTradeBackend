@@ -139,8 +139,15 @@ const updateProfile = async (req, res) => {
         const user = await User.findById(req.user._id);
 
         if (user) {
+            if (req.body.email && req.body.email !== user.email) {
+                const emailExists = await User.findOne({ email: req.body.email });
+                if (emailExists) {
+                    return res.status(400).json({ message: 'Email already in use' });
+                }
+                user.email = req.body.email;
+            }
+
             user.fullName = req.body.fullName || user.fullName;
-            user.email = req.body.email || user.email;
             user.companyName = req.body.companyName || user.companyName;
             user.phone = req.body.phone || user.phone;
             user.avatarUrl = req.body.avatarUrl || user.avatarUrl;
