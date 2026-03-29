@@ -127,8 +127,9 @@ const loginUser = async (req, res) => {
 // @route   GET /api/auth/me
 // @access  Private
 const getMe = async (req, res) => {
-    console.log("getMe hit");
+    console.log(`[GET_ME] Controller hit. User ID: ${req.user?._id}`);
     res.status(200).json(req.user);
+    console.log(`[GET_ME] Response sent.`);
 };
 
 // @desc    Update user profile

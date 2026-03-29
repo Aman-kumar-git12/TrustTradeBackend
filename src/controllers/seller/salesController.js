@@ -89,6 +89,7 @@ const getBuyerOrders = async (req, res) => {
                 populate: { path: 'business', select: 'businessName' }
             })
             .populate('seller', 'fullName email phone')
+            .populate('buyer', 'fullName email phone')
             .sort({ createdAt: -1 });
 
         // Backend Filter Logic

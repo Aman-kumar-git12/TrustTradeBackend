@@ -37,7 +37,7 @@ const getSellerDashboardStats = async (req, res) => {
             total: interests.length,
             accepted: interests.filter(i => i.status === 'accepted').length,
             rejected: interests.filter(i => i.status === 'rejected').length,
-            pending: interests.filter(i => i.status === 'pending').length
+            pending: interests.filter(i => i.status === 'negotiating').length
         };
 
         const completedDeals = await Sales.countDocuments({ seller: sellerId, status: 'completed' });

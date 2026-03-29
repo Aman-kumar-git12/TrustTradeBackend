@@ -40,20 +40,19 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 console.log("Server restarting... (CORS Fix v3 - Ultra Robust applied)");
 
+// Logging incoming requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // Cloudinary Routes
 app.use("/api/images", cloudinaryRoutes);
-
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    allowedOrigins: allowedOrigins
-  });
-});
 
 app.get('/', (req, res) => {
   res.send('AssetDirect API is running...');
 });
+app.get("/api/health", (req, res) => res.status(200).send("OK"));
 
 const authRoutes = require('./routes/authRoutes');
 const assetRoutes = require('./routes/assetRoutes');
@@ -77,12 +76,15 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/analytics/buyer', buyerAnalyticsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use('/api/cron', require('./routes/cronRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/support', require('./routes/supportRoutes'));
+app.use('/api/agent', require('./routes/agentRoutes'));
 
 
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`Accessible at http://localhost:${PORT} or http://127.0.0.1:${PORT}`);
 });

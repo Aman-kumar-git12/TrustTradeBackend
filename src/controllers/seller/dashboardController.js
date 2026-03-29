@@ -24,7 +24,7 @@ const getBusinessStats = async (req, res) => {
         const totalViews = assets.reduce((acc, curr) => acc + (curr.views || 0), 0);
 
         const totalLeads = await Interest.countDocuments({ asset: { $in: assetIds } });
-        const pendingLeads = await Interest.countDocuments({ asset: { $in: assetIds }, status: 'pending' });
+        const pendingLeads = await Interest.countDocuments({ asset: { $in: assetIds }, status: 'negotiating' });
 
         // Lead Insights
         const acceptedLeads = await Interest.countDocuments({ asset: { $in: assetIds }, status: 'accepted' });

@@ -30,7 +30,7 @@ const getHomeStats = async (req, res) => {
             {
                 $group: {
                     _id: '$seller', // Group by Seller User ID
-                    sellerName: { $first: '$sellerDetails.name' },
+                    sellerName: { $first: '$sellerDetails.fullName' },
                     totalProfit: { $sum: '$totalAmount' }
                 }
             },

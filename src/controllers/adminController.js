@@ -115,7 +115,18 @@ const getAllSales = async (req, res) => {
 // @access  Public (Used by Home page)
 const getFeaturedEvent = async (req, res) => {
     try {
-        const event = await Event.findOne({ eventType: 'FEATURED EVENT', isActive: true });
+        const now = new Date();
+
+        const event = await Event.findOne({
+            eventType: 'FEATURED EVENT',
+            isActive: true,
+            $or: [
+                { expiresAt: { $exists: false } },
+                { expiresAt: null },
+                { expiresAt: { $gt: now } }
+            ]
+        }).sort({ createdAt: -1 });
+
         res.json(event);
     } catch (error) {
         res.status(500).json({ message: error.message });

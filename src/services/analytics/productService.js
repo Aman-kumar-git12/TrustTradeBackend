@@ -175,7 +175,7 @@ const getDetails = async (assetId, range = 'all') => {
     const dealsPer100 = totalInterests > 0 ? ((totalOrders / totalInterests) * 100).toFixed(1) : 0;
 
     // Interest Breakdown
-    const pendingRequests = interests.filter(i => i.status === 'pending').length;
+    const pendingRequests = interests.filter(i => i.status === 'negotiating' || i.status === 'accepted').length;
     const negotiatingRequests = interests.filter(i => i.status === 'negotiating').length;
 
     // Revenue & Profit Graph Data (Daily Aggregation)
@@ -223,6 +223,7 @@ const getDetails = async (assetId, range = 'all') => {
         asset: {
             id: asset._id,
             title: asset.title,
+            category: asset.category,
             price: asset.price,
             views: asset.views,
             status: asset.status,

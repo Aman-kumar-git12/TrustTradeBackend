@@ -4,7 +4,7 @@ const User = require('./models/User');
 const Asset = require('./models/Asset');
 const Interest = require('./models/Interest');
 const Business = require('./models/Business');
-const Sales = require('./models/Sales');
+const Sales = require('./models/Sale');
 const connectDB = require('./config/db');
 
 dotenv.config();
@@ -296,10 +296,10 @@ const seedData = async () => {
             const buyers = getRandomSubset(potentialBuyers, numLeads);
 
             buyers.forEach(buyer => {
-                const statuses = ['pending', 'negotiating', 'rejected', 'accepted'];
-                // Weighted status: more pending/negotiating
+                const statuses = ['negotiating', 'rejected', 'accepted'];
+                // Weighted status: more negotiating
                 const status = Math.random() > 0.3 ?
-                    (Math.random() > 0.5 ? 'pending' : 'negotiating') :
+                    'negotiating' :
                     getRandomItem(statuses);
 
                 interestsData.push({
@@ -314,8 +314,8 @@ const seedData = async () => {
             });
         });
 
-        await Interest.create(interestsData);
-        console.log(`Created ${interestsData.length} Interests (Leads)...`);
+        const createdInterests = await Interest.create(interestsData);
+        console.log(`Created ${createdInterests.length} Interests (Leads)...`);
 
         console.log('Generating Sales History...');
         const salesData = [];
@@ -336,15 +336,26 @@ const seedData = async () => {
                     const daysAgo = Math.floor(Math.random() * 365);
                     const dealDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 
+                    // Find matching interest
+                    const matchingInterest = createdInterests.find(i => 
+                        i.asset.toString() === asset._id.toString() && 
+                        i.buyer.toString() === buyer._id.toString()
+                    );
+                    
+                    if (!matchingInterest) continue;
+
                     // Price variation (Negotiated price)
                     const price = Math.floor(asset.price * (0.85 + Math.random() * 0.15)); // 85-100%
+                    const quantity = Math.floor(Math.random() * 5) + 1;
 
                     salesData.push({
                         asset: asset._id,
                         seller: seller2._id,
                         buyer: buyer._id,
+                        interest: matchingInterest._id,
                         price: price,
-                        quantity: Math.floor(Math.random() * 5) + 1,
+                        quantity: quantity,
+                        totalAmount: price * quantity,
                         dealDate: dealDate,
                         status: 'sold'
                     });
@@ -356,15 +367,25 @@ const seedData = async () => {
         console.log('Generating Guaranteed Recent Sales...');
         const recentAssets = sarahsAssets.slice(0, 3); // Pick first 3 assets
         recentAssets.forEach(asset => {
-            salesData.push({
-                asset: asset._id,
-                seller: seller2._id,
-                buyer: buyer1._id,
-                price: asset.price,
-                quantity: 1,
-                dealDate: new Date(), // NOW
-                status: 'sold'
-            });
+            const buyer = buyer1;
+            const matchingInterest = createdInterests.find(i => 
+                i.asset.toString() === asset._id.toString() && 
+                i.buyer.toString() === buyer._id.toString()
+            );
+
+            if (matchingInterest) {
+                salesData.push({
+                    asset: asset._id,
+                    seller: seller2._id,
+                    buyer: buyer._id,
+                    interest: matchingInterest._id,
+                    price: asset.price,
+                    quantity: 1,
+                    totalAmount: asset.price,
+                    dealDate: new Date(), // NOW
+                    status: 'sold'
+                });
+            }
         });
 
         await Sales.create(salesData);

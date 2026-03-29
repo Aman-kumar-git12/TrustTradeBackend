@@ -125,7 +125,7 @@ const deleteAsset = async (req, res) => {
 // @access  Private/Seller
 const updateAsset = async (req, res) => {
     try {
-        const { title, description, price, condition, location, category } = req.body;
+        const { title, description, price, condition, location, category, quantity } = req.body;
 
         const asset = await Asset.findById(req.params.id);
 
@@ -138,12 +138,13 @@ const updateAsset = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized to update this asset' });
         }
 
-        asset.title = title || asset.title;
-        asset.description = description || asset.description;
-        asset.price = price || asset.price;
-        asset.condition = condition || asset.condition;
-        asset.location = location || asset.location;
-        asset.category = category || asset.category;
+        if (title !== undefined) asset.title = title;
+        if (description !== undefined) asset.description = description;
+        if (price !== undefined) asset.price = price;
+        if (condition !== undefined) asset.condition = condition;
+        if (location !== undefined) asset.location = location;
+        if (category !== undefined) asset.category = category;
+        if (quantity !== undefined) asset.quantity = quantity;
 
         await asset.save();
         res.status(200).json(asset);
