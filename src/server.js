@@ -12,6 +12,9 @@ connectDB();
 const app = express();
 app.set('trust proxy', 1);
 
+// Health check endpoint at the very top to bypass heavy middleware/DB checks if needed
+app.get("/api/health", (req, res) => res.status(200).send("OK"));
+
 // 1. CORS Configuration
 const allowedOrigins = [
   'http://localhost:5173',
@@ -38,7 +41,7 @@ app.use(cors({
 app.use(express.json());
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
-console.log("Server restarting... (CORS Fix v3 - Ultra Robust applied)");
+console.log("Server starting... (TrustTrade Robust Engine v1.0)");
 
 // Logging incoming requests
 app.use((req, res, next) => {
@@ -50,9 +53,8 @@ app.use((req, res, next) => {
 app.use("/api/images", cloudinaryRoutes);
 
 app.get('/', (req, res) => {
-  res.send('AssetDirect API is running...');
+  res.send('TrustTrade API is running...');
 });
-app.get("/api/health", (req, res) => res.status(200).send("OK"));
 
 const authRoutes = require('./routes/authRoutes');
 const assetRoutes = require('./routes/assetRoutes');

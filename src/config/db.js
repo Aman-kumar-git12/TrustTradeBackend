@@ -5,8 +5,8 @@ const connectDB = async () => {
         const conn = await mongoose.connect(process.env.MONGODB_URI);
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error(`Error: ${error.message}`);
-        process.exit(1);
+        console.error(`Database connection error: ${error.message}`);
+        // Do not process.exit(1) - this allows health checks to respond and Render to stay alive
     }
 };
 
