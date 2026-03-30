@@ -2,8 +2,8 @@ name: Keep-Alive Pinger
 
 on:
   schedule:
-    # Runs every 15 minutes to prevent Render free-tier sleep
-    - cron: '*/15 * * * *'
+    # Staggered: runs at minutes 7, 22, 37, and 52 to avoid clashing with other 15-min monitors
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch: # Allow manual trigger from the Actions tab
 
 jobs:

@@ -1,19 +1,22 @@
 const express = require('express');
+const app = express();
+app.set('trust proxy', 1);
+
+/**
+ * ULTRA-PRIORITY HEALTH CHECK
+ * Absolute top to respond before ANY other middleware or DB connection.
+ */
+app.get("/api/health", (req, res) => res.status(200).send("OK"));
+
 const dotenv = require('dotenv');
 dotenv.config();
 const cors = require('cors');
 const connectDB = require('./config/db');
 
-const cloudinaryRoutes = require("./cloudinary/routes.js");
-
-// Connect to database
+// Connect to database in parallel
 connectDB();
 
-const app = express();
-app.set('trust proxy', 1);
-
-// Health check endpoint at the very top to bypass heavy middleware/DB checks if needed
-app.get("/api/health", (req, res) => res.status(200).send("OK"));
+const cloudinaryRoutes = require("./cloudinary/routes.js");
 
 // 1. CORS Configuration
 const allowedOrigins = [
