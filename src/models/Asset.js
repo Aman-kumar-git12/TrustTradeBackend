@@ -40,7 +40,19 @@ const assetSchema = mongoose.Schema({
         type: Number,
         default: 1
     },
+    reservedQuantity: {
+        type: Number,
+        default: 0
+    },
     sales: {
+        type: Number,
+        default: 0
+    },
+    rating: {
+        type: Number,
+        default: 0
+    },
+    reviewCount: {
         type: Number,
         default: 0
     },

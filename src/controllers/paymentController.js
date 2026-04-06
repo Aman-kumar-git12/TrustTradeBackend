@@ -3,7 +3,9 @@ const crypto = require("crypto");
 const Sale = require("../models/Sale");
 const Interest = require("../models/Interest");
 const Asset = require("../models/Asset");
+const InventoryReservation = require("../models/InventoryReservation");
 const logActivity = require('../utils/activityLogger');
+const { createQuote: createStrategicQuote } = require('../services/agent/quoteService');
 
 const createHttpError = (statusCode, message) => {
     const error = new Error(message);
@@ -20,9 +22,10 @@ const normalizeQuantity = (value, fallback = 1) => {
     return Math.floor(parsed);
 };
 
-const getAvailableQuantity = (asset) => Number(asset?.quantity ?? 0);
+const getAvailableQuantity = (asset) =>
+    Math.max(0, Number(asset?.quantity ?? 0) - Number(asset?.reservedQuantity ?? 0));
 
-const resolvePaymentRequest = async ({ amount, interestId, assetId, quantity, buyerId }) => {
+const resolvePaymentRequest = async ({ amount, interestId, assetId, quantity, buyerId, reservationId }) => {
     if (interestId) {
         const interest = await Interest.findById(interestId).populate("asset");
 
@@ -59,6 +62,7 @@ const resolvePaymentRequest = async ({ amount, interestId, assetId, quantity, bu
 
     if (assetId) {
         const asset = await Asset.findById(assetId);
+        let reservation = null;
 
         if (!asset) {
             throw createHttpError(404, "Asset not found");
@@ -69,15 +73,42 @@ const resolvePaymentRequest = async ({ amount, interestId, assetId, quantity, bu
         }
 
         const resolvedQuantity = normalizeQuantity(quantity, 1);
+        if (reservationId) {
+            reservation = await InventoryReservation.findById(reservationId);
 
-        if (resolvedQuantity > getAvailableQuantity(asset)) {
+            if (!reservation || reservation.status !== 'pending') {
+                throw createHttpError(409, "Reservation is missing or already expired");
+            }
+
+            if (reservation.userId.toString() !== buyerId.toString()) {
+                throw createHttpError(403, "Reservation does not belong to this buyer");
+            }
+
+            if (reservation.assetId.toString() !== assetId.toString()) {
+                throw createHttpError(400, "Reservation does not match the selected asset");
+            }
+        }
+
+        const availableQuantity = getAvailableQuantity(asset) + Number(reservation?.quantity || 0);
+
+        if (resolvedQuantity > availableQuantity) {
             throw createHttpError(400, "Requested quantity exceeds available stock");
         }
 
+        let resolvedAmount = Number(asset.price) * resolvedQuantity;
+        if (reservation) {
+            const quote = await createStrategicQuote({
+                assetId,
+                quantity: resolvedQuantity,
+            });
+            resolvedAmount = Number(quote.total);
+        }
+
         return {
-            amount: Number(asset.price) * resolvedQuantity,
+            amount: resolvedAmount,
             quantity: resolvedQuantity,
-            asset
+            asset,
+            reservation,
         };
     }
 
@@ -95,7 +126,7 @@ const resolvePaymentRequest = async ({ amount, interestId, assetId, quantity, bu
 // CREATE ORDER
 const createOrder = async (req, res) => {
     try {
-        const { amount, interestId, assetId, quantity } = req.body;
+        const { amount, interestId, assetId, quantity, reservationId } = req.body;
 
         if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
             throw new Error("Razorpay keys are missing in backend configuration");
@@ -111,6 +142,7 @@ const createOrder = async (req, res) => {
             interestId,
             assetId,
             quantity,
+            reservationId,
             buyerId: req.user._id
         });
 
@@ -122,7 +154,8 @@ const createOrder = async (req, res) => {
                 interestId: interestId || "",
                 assetId: assetId || "",
                 quantity: paymentContext.quantity || "",
-                buyerId: req.user._id.toString()
+                buyerId: req.user._id.toString(),
+                reservationId: reservationId || "",
             }
         });
 
@@ -175,7 +208,7 @@ const verifyPayment = async (req, res) => {
 
         if (expectedSignature === razorpay_signature) {
             // Create Sale record and update Interest if interestId or assetId is provided
-            const { interestId, assetId, quantity } = req.body;
+            const { interestId, assetId, quantity, reservationId } = req.body;
             let sale = null;
 
             if (interestId || assetId) {
@@ -183,6 +216,7 @@ const verifyPayment = async (req, res) => {
                     interestId,
                     assetId,
                     quantity,
+                    reservationId,
                     buyerId: req.user._id,
                     paymentId: razorpay_payment_id
                 });
@@ -201,13 +235,14 @@ const verifyPayment = async (req, res) => {
     }
 };
 
-const processSale = async ({ interestId, assetId, quantity, buyerId, paymentId }) => {
+const processSale = async ({ interestId, assetId, quantity, reservationId, buyerId, paymentId }) => {
     const existingSale = await Sale.findOne({ razorpayPaymentId: paymentId });
     if (existingSale) {
         return existingSale;
     }
 
     let interest;
+    let strategicReservation = null;
 
     if (interestId && interestId !== "") {
         interest = await Interest.findById(interestId).populate("asset");
@@ -240,8 +275,24 @@ const processSale = async ({ interestId, assetId, quantity, buyerId, paymentId }
         }
 
         const resolvedQuantity = normalizeQuantity(quantity, 1);
+        if (reservationId) {
+            strategicReservation = await InventoryReservation.findById(reservationId);
+            if (!strategicReservation || strategicReservation.status !== 'pending') {
+                throw createHttpError(409, "Reservation expired or already processed");
+            }
 
-        if (resolvedQuantity > getAvailableQuantity(asset)) {
+            if (strategicReservation.userId.toString() !== buyerId.toString()) {
+                throw createHttpError(403, "Reservation does not belong to this buyer");
+            }
+
+            if (strategicReservation.assetId.toString() !== assetId.toString()) {
+                throw createHttpError(400, "Reservation does not match the selected asset");
+            }
+        }
+
+        const availableQuantity = getAvailableQuantity(asset) + Number(strategicReservation?.quantity || 0);
+
+        if (resolvedQuantity > availableQuantity) {
             throw createHttpError(400, "Requested quantity exceeds available stock");
         }
 
@@ -272,7 +323,8 @@ const processSale = async ({ interestId, assetId, quantity, buyerId, paymentId }
         throw createHttpError(400, "Could not determine sale price");
     }
 
-    if (saleQuantity > getAvailableQuantity(interest.asset)) {
+    const effectiveAvailable = getAvailableQuantity(interest.asset) + Number(strategicReservation?.quantity || 0);
+    if (saleQuantity > effectiveAvailable) {
         throw createHttpError(400, "Requested quantity exceeds available stock");
     }
 
@@ -301,7 +353,15 @@ const processSale = async ({ interestId, assetId, quantity, buyerId, paymentId }
     interest.soldTotalAmount = amount;
     await interest.save();
 
-    interest.asset.quantity = Math.max(0, getAvailableQuantity(interest.asset) - saleQuantity);
+    interest.asset.quantity = Math.max(0, Number(interest.asset.quantity || 0) - saleQuantity);
+    if (strategicReservation) {
+        interest.asset.reservedQuantity = Math.max(
+            0,
+            Number(interest.asset.reservedQuantity || 0) - saleQuantity
+        );
+        strategicReservation.status = 'confirmed';
+        await strategicReservation.save();
+    }
     interest.asset.sales = Number(interest.asset.sales || 0) + saleQuantity;
     if (interest.asset.quantity === 0) {
         interest.asset.status = 'inactive';

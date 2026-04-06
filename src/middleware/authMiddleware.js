@@ -1,6 +1,12 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const isInternalAgentRequest = (req) => {
+    const expectedKey = process.env.AGENT_INTERNAL_KEY || 'trusttrade-local-agent';
+    const incomingKey = req.headers['x-agent-internal-key'];
+    return Boolean(incomingKey && incomingKey === expectedKey);
+};
+
 const protect = async (req, res, next) => {
     console.log(`[PROTECT] Request: ${req.method} ${req.originalUrl}`);
     console.log(`[PROTECT] Cookies count: ${Object.keys(req.cookies || {}).length}`);
@@ -56,6 +62,13 @@ const protect = async (req, res, next) => {
     }
 };
 
+const protectOrInternalAgent = async (req, res, next) => {
+    if (isInternalAgentRequest(req)) {
+        return next();
+    }
+    return protect(req, res, next);
+};
+
 const admin = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
         return next();
@@ -64,4 +77,4 @@ const admin = (req, res, next) => {
     }
 };
 
-module.exports = { protect, admin };
+module.exports = { protect, admin, protectOrInternalAgent, isInternalAgentRequest };
