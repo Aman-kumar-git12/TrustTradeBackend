@@ -1,5 +1,3 @@
-const path = require('path');
-
 const fallbackReply = (userRole) => ({
     reply: `Your TrustTrade AI agent is temporarily unavailable, so I switched to a fallback reply.\n\nIf you are a ${userRole || 'platform'} user, I can still suggest a strong next step: open the dashboard, review your active items, and ask again with a more specific question about listings, negotiation, or checkout.`,
     quickReplies: [
@@ -7,56 +5,50 @@ const fallbackReply = (userRole) => ({
         'Guide me on negotiation',
         'Show me the next dashboard step'
     ],
-    source: 'fallback'
+    source: 'fallback',
+    sessionId: null
 });
 
-const callAgent = async ({ message, history, user }) => {
-    const agentUrl = process.env.PYTHON_AGENT_URL || 'http://localhost:8000/api/chat';
-    
-    const payload = {
-        message,
-        history,
-        user: {
-            fullName: user?.fullName || '',
-            role: user?.role || 'member'
-        }
-    };
-
+const requestAgent = async (url, options = {}, timeoutMs = 30000) => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s — allows for cold-start model load
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        const response = await fetch(agentUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(options.headers || {})
+            },
             signal: controller.signal
         });
-
-        clearTimeout(timeout);
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json')
+            ? await response.json()
+            : await response.text();
 
         if (!response.ok) {
-            const errorText = await response.text();
-            let status = 502; // Bad Gateway by default for AI errors
-            if (response.status === 503) status = 503;
-            
-            const error = new Error(`Agent API responded with ${response.status}: ${errorText}`);
-            error.status = status;
+            const error = new Error(
+                typeof data === 'string'
+                    ? data
+                    : `Agent API responded with ${response.status}`
+            );
+            error.status = response.status;
             throw error;
         }
 
-        return await response.json();
+        return data;
     } catch (error) {
-        clearTimeout(timeout);
         if (error.name === 'AbortError') {
             const timeoutError = new Error('AI Agent Strategic Interface timed out');
-            timeoutError.status = 504; // Gateway Timeout
+            timeoutError.status = 504;
             throw timeoutError;
         }
-        
-        // Ensure error has a status for the controller
-        if (!error.status) error.status = 503; // Service Unavailable
+
+        if (!error.status) error.status = 503;
         throw error;
+    } finally {
+        clearTimeout(timeout);
     }
 };
 
@@ -84,17 +76,10 @@ const chatWithAgent = async (req, res) => {
         };
 
         try {
-            const response = await fetch(`${agentUrl}/api/chat`, {
+            const data = await requestAgent(`${agentUrl}/api/chat`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Agent API error: ${response.status}`);
-            }
-
-            const data = await response.json();
+            }, 30000);
             return res.status(200).json(data);
         } catch (error) {
             console.error('AI Agent Communication failure:', error.message);
@@ -110,11 +95,11 @@ const listSessions = async (req, res) => {
         const userId = req.user?._id || req.user?.id;
         const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8000').replace(/\/$/, "");
 
-        const response = await fetch(`${agentUrl}/api/sessions?userId=${userId}`);
-        if (!response.ok) {
-            return res.status(200).json([]);
-        }
-        const data = await response.json();
+        const data = await requestAgent(
+            `${agentUrl}/api/sessions?userId=${encodeURIComponent(userId || 'anonymous')}`,
+            { method: 'GET', headers: {} },
+            10000
+        );
         res.status(200).json(data);
     } catch (error) {
         res.status(200).json([]);
@@ -125,14 +110,16 @@ const getSession = async (req, res) => {
     try {
         const { id } = req.params;
         const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8000').replace(/\/$/, "");
-        
-        const response = await fetch(`${agentUrl}/api/sessions/${id}`);
-        if (!response.ok) return res.status(404).json({ message: 'Session not found' });
-        
-        const data = await response.json();
+
+        const data = await requestAgent(
+            `${agentUrl}/api/sessions/${encodeURIComponent(id)}`,
+            { method: 'GET', headers: {} },
+            10000
+        );
         res.status(200).json(data);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        const status = error.status === 404 ? 404 : 500;
+        res.status(status).json({ message: error.message });
     }
 };
 
@@ -140,12 +127,16 @@ const deleteSession = async (req, res) => {
     try {
         const { id } = req.params;
         const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8000').replace(/\/$/, "");
-        
-        const response = await fetch(`${agentUrl}/api/sessions/${id}`, { method: 'DELETE' });
-        const data = await response.json();
+
+        const data = await requestAgent(
+            `${agentUrl}/api/sessions/${encodeURIComponent(id)}`,
+            { method: 'DELETE', headers: {} },
+            10000
+        );
         res.status(200).json(data);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        const status = error.status === 404 ? 404 : 500;
+        res.status(status).json({ message: error.message });
     }
 };
 
