@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const Asset = require('../../models/Asset');
 
+const InventoryReservation = require('../../models/InventoryReservation');
+
 const PLATFORM_FEE_RATE = 0.03;
 const TAX_RATE = 0.18;
 const QUOTE_TTL_MS = 15 * 60 * 1000;
@@ -8,7 +10,7 @@ const QUOTE_TTL_MS = 15 * 60 * 1000;
 const getAvailableQuantity = (asset) =>
     Math.max(0, Number(asset?.quantity || 0) - Number(asset?.reservedQuantity || 0));
 
-const createQuote = async ({ assetId, quantity = 1 }) => {
+const createQuote = async ({ assetId, quantity = 1, reservationId = null }) => {
     const normalizedQuantity = Math.max(1, Number(quantity) || 1);
 
     const asset = await Asset.findOne({
@@ -20,7 +22,15 @@ const createQuote = async ({ assetId, quantity = 1 }) => {
         throw new Error('Asset not found or inactive');
     }
 
-    if (getAvailableQuantity(asset) < normalizedQuantity) {
+    let reservationQuantity = 0;
+    if (reservationId) {
+        const reservation = await InventoryReservation.findById(reservationId).lean();
+        if (reservation && reservation.status === 'pending') {
+            reservationQuantity = Number(reservation.quantity || 0);
+        }
+    }
+
+    if ((getAvailableQuantity(asset) + reservationQuantity) < normalizedQuantity) {
         throw new Error('Requested quantity exceeds available stock');
     }
 

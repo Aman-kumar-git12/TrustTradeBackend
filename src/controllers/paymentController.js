@@ -100,6 +100,7 @@ const resolvePaymentRequest = async ({ amount, interestId, assetId, quantity, bu
             const quote = await createStrategicQuote({
                 assetId,
                 quantity: resolvedQuantity,
+                reservationId,
             });
             resolvedAmount = Number(quote.total);
         }

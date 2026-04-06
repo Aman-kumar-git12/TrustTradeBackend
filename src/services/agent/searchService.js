@@ -5,15 +5,40 @@ const Asset = require('../../models/Asset');
  * Ensures only purchasable and in-stock assets are returned.
  */
 
+const normalizeSearchQuery = (query, category) => {
+    if (typeof query !== 'string') {
+        return null;
+    }
+
+    let normalized = query.trim();
+    if (!normalized) {
+        return null;
+    }
+
+    if (category && typeof category === 'string' && category.trim()) {
+        const escapedCategory = category.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        normalized = normalized.replace(new RegExp(escapedCategory, 'ig'), ' ');
+    }
+
+    normalized = normalized.replace(
+        /\b(?:under|below|max|budget(?:\s+is)?|within|about|around)\b\s*(?:\$|usd|rs|inr)?\s*\d+(?:,\d+)?(?:\.\d+)?/ig,
+        ' '
+    );
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+
+    return normalized || null;
+};
+
 const searchAssets = async ({ query, category, budgetMax, limit = 5, userId = null }) => {
     try {
         let matchStage = { status: 'active' };
+        const normalizedQuery = normalizeSearchQuery(query, category);
 
         // 1. Text Search (title or description)
-        if (query) {
+        if (normalizedQuery) {
             matchStage.$or = [
-                { title: { $regex: query, $options: 'i' } },
-                { description: { $regex: query, $options: 'i' } }
+                { title: { $regex: normalizedQuery, $options: 'i' } },
+                { description: { $regex: normalizedQuery, $options: 'i' } }
             ];
         }
 
@@ -29,7 +54,7 @@ const searchAssets = async ({ query, category, budgetMax, limit = 5, userId = nu
 
         // 4. Stock Protection Logic: available = quantity - reservedQuantity
         // We use $expr to compare these fields in the aggregation
-        matchStage.$expr = { $gt: [{ $subtract: ["$quantity", "$reservedQuantity"] }, 0] };
+        matchStage.$expr = { $gt: [{ $subtract: ["$quantity", { $ifNull: ["$reservedQuantity", 0] }] }, 0] };
 
         // 5. Build Aggregation
         const pipeline = [
@@ -47,7 +72,7 @@ const searchAssets = async ({ query, category, budgetMax, limit = 5, userId = nu
                     location: 1,
                     rating: 1,
                     reviewCount: 1,
-                    availableQuantity: { $subtract: ["$quantity", "$reservedQuantity"] }
+                    availableQuantity: { $subtract: ["$quantity", { $ifNull: ["$reservedQuantity", 0] }] }
                 }
             }
         ];
@@ -71,5 +96,6 @@ const getCategories = async () => {
 
 module.exports = {
     searchAssets,
-    getCategories
+    getCategories,
+    normalizeSearchQuery,
 };

@@ -28,8 +28,8 @@ const calculateTrustScore = (stats) => {
     const actScore = Math.min(activity / 10, 1) * 20;
 
     // 3. Volume (20%): Spending
-    // Benchmark: $5,000 for max score
-    const volScore = Math.min(volume / 5000, 1) * 20;
+    // Benchmark: ₹4,00,000 for max score
+    const volScore = Math.min(volume / 400000, 1) * 20;
 
     // 4. Tenure (20%): Account Age
     // Benchmark: 30 days for max score
@@ -153,9 +153,9 @@ const getBuyerOverview = async (buyerId, range = '1m') => {
         achievements.push({ id: 'negotiation_pro', label: 'Negotiation Pro', icon: 'TrendingUp', desc: 'Completed 3 successful negotiated deals' });
     }
 
-    // 4. High-Value Trader (> 1,00,000 INR / ~1,200 USD)
-    if (volume > 1200) { // Using 1200 USD as equivalent for 1,00,000 INR
-        achievements.push({ id: 'high_value', label: 'High-Value Trader', icon: 'DollarSign', desc: 'Total transaction value > $1,200' });
+    // 4. High-Value Trader (> 1,00,000 INR)
+    if (volume > 100000) { 
+        achievements.push({ id: 'high_value', label: 'High-Value Trader', icon: 'IndianRupee', desc: 'Total transaction value > ₹1,00,000' });
     }
 
     // 5. Fast Mover (3 deals within 1hr)
