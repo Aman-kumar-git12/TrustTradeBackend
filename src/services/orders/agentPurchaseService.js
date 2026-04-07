@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Asset = require('../../models/Asset');
 const Sale = require('../../models/Sale');
+const Interest = require('../../models/Interest');
 const InventoryReservation = require('../../models/InventoryReservation');
 const PaymentIntent = require('../../models/PaymentIntent');
 const { verifyPayment } = require('../payments/paymentService');
@@ -28,15 +29,49 @@ const completeStrategicPurchase = async ({ razorpayOrderId, razorpayPaymentId, r
             throw new Error("Reservation expired or already processed");
         }
 
-        // 3. Create the Sale record
+        // 3. Find or Create Interest (Required by Sale model)
+        let interest = await Interest.findOne({
+            buyer: intent.userId,
+            asset: intent.assetId
+        }).session(session);
+
+        if (!interest) {
+            interest = await Interest.create([{
+                buyer: intent.userId,
+                asset: intent.assetId,
+                seller: asset.seller,
+                quantity: intent.quantity || 1,
+                status: 'accepted',
+                salesStatus: 'sold',
+                soldPrice: intent.amount / (intent.quantity || 1),
+                soldQuantity: intent.quantity || 1,
+                soldTotalAmount: intent.amount,
+                soldDate: new Date(),
+                message: "Strategic Agent Purchase"
+            }], { session });
+            interest = interest[0];
+        } else {
+            // Update existing interest (e.g. from negotiation)
+            interest.status = 'accepted';
+            interest.salesStatus = 'sold';
+            interest.soldPrice = intent.amount / (intent.quantity || 1);
+            interest.soldQuantity = intent.quantity || 1;
+            interest.soldTotalAmount = intent.amount;
+            interest.soldDate = new Date();
+            await interest.save({ session });
+        }
+
+        // 4. Create the Sale record
         const sale = await Sale.create([{
             seller: asset.seller,
             buyer: intent.userId,
             asset: intent.assetId,
-            price: intent.amount / intent.quantity, // Unit price
-            quantity: intent.quantity,
+            interest: interest._id,
+            price: intent.amount / (intent.quantity || 1), // Unit price
+            quantity: intent.quantity || 1,
+            soldQuantity: intent.quantity || 1,
             totalAmount: intent.amount,
-            status: 'completed',
+            status: 'sold',
             razorpayPaymentId,
             notes: "Strategic AI Partner Purchase"
         }], { session });

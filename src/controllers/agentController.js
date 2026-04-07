@@ -1,7 +1,11 @@
 const { searchAssets, getCategories } = require('../services/agent/searchService');
 const { createQuote } = require('../services/agent/quoteService');
 const { createReservation, releaseReservation } = require('../services/agent/reservationService');
+const { createAgentPaymentOrder } = require('../services/agent/paymentOrderService');
+const { completeStrategicPurchase } = require('../services/orders/agentPurchaseService');
 const AgentSession = require('../models/AgentSession');
+const Asset = require('../models/Asset');
+const Interest = require('../models/Interest');
 
 const fallbackReply = (userRole) => ({
     reply: `Your TrustTrade AI agent is temporarily unavailable, so I switched to a fallback reply.\n\nIf you are a ${userRole || 'platform'} user, I can still suggest a strong next step: open the dashboard, review your active items, and ask again with a more specific question about listings, negotiation, or checkout.`,
@@ -106,6 +110,7 @@ const chatWithAgent = async (req, res) => {
             history: historyForAgent.slice(0, -1), // Don't include the current message in history yet
             sessionId,
             mode,
+            metadata: req.body?.metadata || {},
             user: {
                 id: String(userId),
                 fullName: req.user?.fullName || '',
@@ -212,6 +217,43 @@ const reserveAgentInventory = async (req, res) => {
     }
 };
 
+const createAgentPaymentOrderController = async (req, res) => {
+    try {
+        const userId = resolveUserId(req);
+        const paymentOrder = await createAgentPaymentOrder({
+            assetId: req.body?.assetId,
+            quantity: Number(req.body?.quantity || 1),
+            reservationId: req.body?.reservationId,
+            sessionId: req.body?.sessionId,
+            userId,
+        });
+        return res.status(200).json(paymentOrder);
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+};
+
+const completeAgentPurchaseController = async (req, res) => {
+    try {
+        const sale = await completeStrategicPurchase({
+            razorpayOrderId: req.body?.razorpayOrderId,
+            razorpayPaymentId: req.body?.razorpayPaymentId,
+            razorpaySignature: req.body?.razorpaySignature,
+        });
+
+        return res.status(200).json({
+            success: true,
+            saleId: String(sale._id),
+            orderId: String(sale._id),
+            assetId: String(sale.asset),
+            quantity: Number(sale.quantity || 0),
+            totalAmount: Number(sale.totalAmount || 0),
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+};
+
 const cancelAgentPurchase = async (req, res) => {
     try {
         const reservationId = req.body?.reservationId;
@@ -231,7 +273,7 @@ const cancelAgentPurchase = async (req, res) => {
 const listSessions = async (req, res) => {
     try {
         const userId = req.user?._id || req.user?.id;
-        
+
         // Filter out soft-deleted sessions
         const sessions = await AgentSession.find({ userId, deletedAt: null })
             .select('sessionId title mode updatedAt')
@@ -259,12 +301,12 @@ const getSession = async (req, res) => {
         const userId = req.user?._id || req.user?.id;
 
         // Ensure session is not soft-deleted
-        const session = await AgentSession.findOne({ 
-            sessionId: id, 
+        const session = await AgentSession.findOne({
+            sessionId: id,
             userId,
-            deletedAt: null 
+            deletedAt: null
         });
-        
+
         if (!session) {
             return res.status(404).json({ message: 'Session not found or deleted' });
         }
@@ -305,7 +347,7 @@ const deleteSession = async (req, res) => {
         const result = await AgentSession.findOneAndUpdate(query, {
             $set: { deletedAt: new Date() }
         }, { new: true });
-        
+
         if (!result) {
             return res.status(404).json({ message: 'Session not found or forbidden' });
         }
@@ -313,12 +355,75 @@ const deleteSession = async (req, res) => {
         // We specifically DO NOT notify the Python Agent for soft-deletion 
         // to preserve its strategic state in the database as well.
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             message: 'Session soft-deleted successfully',
-            sessionId: result.sessionId 
+            sessionId: result.sessionId
         });
     } catch (error) {
         console.error('Delete session error:', error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const getAgentAsset = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const asset = await Asset.findById(id).lean();
+        if (!asset) {
+            return res.status(404).json({ message: 'Asset not found' });
+        }
+        res.status(200).json(asset);
+    } catch (error) {
+        console.error('Get agent asset error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const recordAgentNegotiation = async (req, res) => {
+    try {
+        const { assetId, quantity, message, sessionId } = req.body;
+        const userId = resolveUserId(req);
+
+        if (!assetId || !userId) {
+            return res.status(400).json({ message: 'Asset ID and User ID are required' });
+        }
+
+        const asset = await Asset.findById(assetId);
+        if (!asset) {
+            return res.status(404).json({ message: 'Asset not found' });
+        }
+
+        // 1. Find or create the Interest record
+        let interest = await Interest.findOne({ asset: assetId, buyer: userId });
+
+        if (!interest) {
+            interest = new Interest({
+                asset: assetId,
+                buyer: userId,
+                seller: asset.seller,
+                quantity: quantity || 1,
+                message: message || 'I am interested in this asset.',
+                status: 'negotiating',
+                negotiationStartDate: new Date()
+            });
+        } else {
+            // Update existing interest with new message
+            interest.message = message || interest.message;
+            interest.status = 'negotiating';
+            interest.quantity = quantity || interest.quantity;
+        }
+
+        await interest.save();
+
+        return res.status(200).json({
+            success: true,
+            interestId: String(interest._id),
+            status: interest.status,
+            message: interest.message,
+            sessionId: sessionId || null
+        });
+    } catch (error) {
+        console.error('Record negotiation error:', error);
         return res.status(500).json({ message: error.message });
     }
 };
@@ -332,5 +437,9 @@ module.exports = {
     listAgentCategories,
     createAgentQuote,
     reserveAgentInventory,
+    createAgentPaymentOrderController,
+    completeAgentPurchaseController,
     cancelAgentPurchase,
+    getAgentAsset,
+    recordAgentNegotiation,
 };

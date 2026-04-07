@@ -9,7 +9,11 @@ const {
     listAgentCategories,
     createAgentQuote,
     reserveAgentInventory,
+    createAgentPaymentOrderController,
+    completeAgentPurchaseController,
     cancelAgentPurchase,
+    getAgentAsset,
+    recordAgentNegotiation,
 } = require('../controllers/agentController');
 const { protect, protectOrInternalAgent } = require('../middleware/authMiddleware');
 
@@ -21,6 +25,10 @@ router.get('/categories', protectOrInternalAgent, listAgentCategories);
 router.post('/search-assets', protectOrInternalAgent, searchAgentAssets);
 router.post('/quote', protectOrInternalAgent, createAgentQuote);
 router.post('/reserve', protectOrInternalAgent, reserveAgentInventory);
+router.post('/payment-order', protectOrInternalAgent, createAgentPaymentOrderController);
+router.post('/complete-purchase', protectOrInternalAgent, completeAgentPurchaseController);
 router.post('/cancel', protectOrInternalAgent, cancelAgentPurchase);
+router.get('/asset/:id', protectOrInternalAgent, getAgentAsset);
+router.post('/negotiate', protectOrInternalAgent, recordAgentNegotiation);
 
 module.exports = router;

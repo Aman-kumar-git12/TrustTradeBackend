@@ -3,7 +3,7 @@ const Asset = require('../../models/Asset');
 
 const InventoryReservation = require('../../models/InventoryReservation');
 
-const PLATFORM_FEE_RATE = 0.03;
+const PLATFORM_FEE = 10;
 const TAX_RATE = 0.18;
 const QUOTE_TTL_MS = 15 * 60 * 1000;
 
@@ -35,7 +35,7 @@ const createQuote = async ({ assetId, quantity = 1, reservationId = null }) => {
     }
 
     const basePrice = Number(asset.price || 0) * normalizedQuantity;
-    const platformFee = Number((basePrice * PLATFORM_FEE_RATE).toFixed(2));
+    const platformFee = PLATFORM_FEE;
     const tax = Number((basePrice * TAX_RATE).toFixed(2));
     const total = Number((basePrice + platformFee + tax).toFixed(2));
 

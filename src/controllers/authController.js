@@ -242,11 +242,11 @@ const getActivityCounts = async (req, res) => {
         let ordersCount = 0;
 
         if (req.user.role === 'buyer') {
-            interestsCount = await Interest.countDocuments({ buyer: req.user._id });
-            ordersCount = await Sales.countDocuments({ buyer: req.user._id, isDeleted: { $ne: true } });
+            interestsCount = await Interest.countDocuments({ buyer: req.user._id, salesStatus: { $ne: 'sold' } });
+            ordersCount = await Sales.countDocuments({ buyer: req.user._id, status: 'sold' });
         } else if (req.user.role === 'seller') {
-            interestsCount = await Interest.countDocuments({ seller: req.user._id });
-            ordersCount = await Sales.countDocuments({ seller: req.user._id, isDeleted: { $ne: true } });
+            interestsCount = await Interest.countDocuments({ seller: req.user._id, salesStatus: { $ne: 'sold' } });
+            ordersCount = await Sales.countDocuments({ seller: req.user._id, status: 'sold' });
         }
 
         res.status(200).json({

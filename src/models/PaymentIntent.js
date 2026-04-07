@@ -31,6 +31,10 @@ const paymentIntentSchema = mongoose.Schema({
         type: Number,
         required: true
     },
+    quantity: {
+        type: Number,
+        required: true
+    },
     currency: {
         type: String,
         default: 'INR'
