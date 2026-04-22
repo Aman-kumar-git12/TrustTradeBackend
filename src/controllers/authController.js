@@ -84,15 +84,27 @@ const registerUser = async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
-    console.log(email, password)
-    console.log("Login attempted");
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    email = email.trim();
+    password = password.trim();
+
+    console.log(`[LOGIN_ATTEMPT] Email: ${email}`);
 
     // Check for user email
     const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
+    if (!user) {
+        console.warn(`[LOGIN_FAILED] User not found: ${email}`);
+        return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const isMatch = await user.matchPassword(password);
+    if (isMatch) {
         const token = generateToken(user.id);
 
         // Log Activity
@@ -111,6 +123,8 @@ const loginUser = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
+        console.log(`[LOGIN_SUCCESS] User: ${user.fullName} (${user.email})`);
+
         res.json({
             _id: user.id,
             fullName: user.fullName,
@@ -119,6 +133,7 @@ const loginUser = async (req, res) => {
             token
         });
     } else {
+        console.warn(`[LOGIN_FAILED] Password mismatch for: ${email}`);
         res.status(401).json({ message: 'Invalid credentials' });
     }
 };
@@ -240,13 +255,24 @@ const getActivityCounts = async (req, res) => {
     try {
         let interestsCount = 0;
         let ordersCount = 0;
+        const scope = (req.query.scope || 'buying').toLowerCase();
 
-        if (req.user.role === 'buyer') {
-            interestsCount = await Interest.countDocuments({ buyer: req.user._id, salesStatus: { $ne: 'sold' } });
-            ordersCount = await Sales.countDocuments({ buyer: req.user._id, status: 'sold' });
-        } else if (req.user.role === 'seller') {
+        if (scope === 'selling' && req.user.role === 'seller') {
             interestsCount = await Interest.countDocuments({ seller: req.user._id, salesStatus: { $ne: 'sold' } });
             ordersCount = await Sales.countDocuments({ seller: req.user._id, status: 'sold' });
+        } else if (scope === 'all' && req.user.role === 'seller') {
+            const [buyingInterests, buyingOrders, sellingInterests, sellingOrders] = await Promise.all([
+                Interest.countDocuments({ buyer: req.user._id, salesStatus: { $ne: 'sold' } }),
+                Sales.countDocuments({ buyer: req.user._id, status: 'sold' }),
+                Interest.countDocuments({ seller: req.user._id, salesStatus: { $ne: 'sold' } }),
+                Sales.countDocuments({ seller: req.user._id, status: 'sold' })
+            ]);
+
+            interestsCount = buyingInterests + sellingInterests;
+            ordersCount = buyingOrders + sellingOrders;
+        } else {
+            interestsCount = await Interest.countDocuments({ buyer: req.user._id, salesStatus: { $ne: 'sold' } });
+            ordersCount = await Sales.countDocuments({ buyer: req.user._id, status: 'sold' });
         }
 
         res.status(200).json({

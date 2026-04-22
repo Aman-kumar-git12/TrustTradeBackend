@@ -47,11 +47,9 @@ const createInterest = async (req, res) => {
     }
 };
 
-// ... (getBuyerInterests and getSellerLeads)
-
-// @desc    Get interests sent by buyer
-// @route   GET /api/interests/buyer
-// @access  Private/Buyer
+// @desc    Get interests for the authenticated user
+// @route   GET /api/interests/me
+// @access  Private
 const getBuyerInterests = async (req, res) => {
     try {
         const { search, category, minPrice, maxPrice, condition, status } = req.query;
@@ -110,9 +108,6 @@ const getBuyerInterests = async (req, res) => {
     }
 };
 
-// @desc    Get leads received by seller
-// @route   GET /api/interests/seller
-// @access  Private/Seller
 // @desc    Get leads received by seller
 // @route   GET /api/interests/seller
 // @access  Private/Seller

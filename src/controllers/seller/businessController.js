@@ -17,6 +17,10 @@ const getMyBusinesses = async (req, res) => {
 // @route   POST /api/businesses
 // @access  Private
 const createBusiness = async (req, res) => {
+    if (req.user.role !== 'seller') {
+        return res.status(403).json({ message: 'Only sellers can create businesses' });
+    }
+
     const { businessName, images, location, description } = req.body;
 
     if (!businessName || !location || !location.city || !location.place || !description) {
@@ -45,6 +49,10 @@ const createBusiness = async (req, res) => {
 // @access  Private
 const updateBusiness = async (req, res) => {
     try {
+        if (req.user.role !== 'seller') {
+            return res.status(403).json({ message: 'Only sellers can update businesses' });
+        }
+
         const business = await Business.findById(req.params.id);
 
         if (!business) {
@@ -73,6 +81,10 @@ const updateBusiness = async (req, res) => {
 // @access  Private
 const deleteBusiness = async (req, res) => {
     try {
+        if (req.user.role !== 'seller') {
+            return res.status(403).json({ message: 'Only sellers can delete businesses' });
+        }
+
         const business = await Business.findById(req.params.id);
 
         if (!business) {

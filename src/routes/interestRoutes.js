@@ -8,11 +8,12 @@ const {
     deleteInterest
 } = require('../controllers/interestController');
 const { protect } = require('../middleware/interestMiddleware');
+const { authorizeRoles } = require('../middleware/authMiddleware');
 
 router.post('/', protect, createInterest);
-router.get('/buyer', protect, getBuyerInterests);
-router.get('/seller', protect, getSellerLeads);
-router.put('/:id/status', protect, updateInterestStatus);
+router.get('/me', protect, getBuyerInterests);
+router.get('/seller', protect, authorizeRoles('seller'), getSellerLeads);
+router.put('/:id/status', protect, authorizeRoles('seller'), updateInterestStatus);
 router.delete('/:id', protect, deleteInterest);
 
 module.exports = router;

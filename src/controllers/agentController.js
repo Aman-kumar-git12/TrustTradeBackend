@@ -236,9 +236,9 @@ const createAgentPaymentOrderController = async (req, res) => {
 const completeAgentPurchaseController = async (req, res) => {
     try {
         const sale = await completeStrategicPurchase({
-            razorpayOrderId: req.body?.razorpayOrderId,
-            razorpayPaymentId: req.body?.razorpayPaymentId,
-            razorpaySignature: req.body?.razorpaySignature,
+            razorpayOrderId: req.body?.razorpayOrderId || req.body?.razorpay_order_id,
+            razorpayPaymentId: req.body?.razorpayPaymentId || req.body?.razorpay_payment_id,
+            razorpaySignature: req.body?.razorpaySignature || req.body?.razorpay_signature,
         });
 
         return res.status(200).json({

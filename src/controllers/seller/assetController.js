@@ -125,7 +125,7 @@ const deleteAsset = async (req, res) => {
 // @access  Private/Seller
 const updateAsset = async (req, res) => {
     try {
-        const { title, description, price, condition, location, category, quantity } = req.body;
+        const { title, description, price, condition, location, category, quantity, images } = req.body;
 
         const asset = await Asset.findById(req.params.id);
 
@@ -145,6 +145,7 @@ const updateAsset = async (req, res) => {
         if (location !== undefined) asset.location = location;
         if (category !== undefined) asset.category = category;
         if (quantity !== undefined) asset.quantity = quantity;
+        if (images !== undefined) asset.images = images;
 
         await asset.save();
         res.status(200).json(asset);

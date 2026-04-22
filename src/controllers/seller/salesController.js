@@ -4,14 +4,29 @@ const Asset = require('../../models/Asset');
 
 // @desc    Create a new sale record
 // @route   POST /api/sales
-// @access  Public (or Private? User didn't specify auth, defaulting to public for now based on context "request form from frontend")
-//          Actually, usually backend routes are protected. But I'll make it simple first.
+// @access  Private/Seller
 const createSale = async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        if (req.user.role !== 'seller') {
+            return res.status(403).json({ message: 'Only sellers can create sale records' });
+        }
+
         const { price, quantity, status, interestId, assetId, buyerId, sellerId } = req.body;
 
         if (price === undefined || !status) { // price can be 0
             return res.status(400).json({ message: 'Price and status are required' });
+        }
+
+        if (!assetId || !buyerId) {
+            return res.status(400).json({ message: 'Asset and buyer are required' });
+        }
+
+        if (sellerId && sellerId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'You can only create sale records for your own account' });
         }
 
         // User Custom Logic: Unsold -> isDeleted: true, Sold -> isDeleted: false
@@ -28,7 +43,7 @@ const createSale = async (req, res) => {
             interest: interestId,
             asset: assetId,
             buyer: buyerId,
-            seller: sellerId,
+            seller: req.user._id,
             isDeleted: isDeleted
         });
 
@@ -60,16 +75,26 @@ const createSale = async (req, res) => {
 
 const deleteSale = async (req, res) => {
     try {
-        await Sales.findByIdAndDelete(req.params.id);
+        const sale = await Sales.findById(req.params.id);
+
+        if (!sale) {
+            return res.status(404).json({ message: 'Sale record not found' });
+        }
+
+        if (sale.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'You can only delete your own sale records' });
+        }
+
+        await sale.deleteOne();
         res.status(200).json({ message: 'Sale record deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Failed to delete sale record', error: error.message });
     }
 };
 
-// @desc    Get purchase history for buyer
-// @route   GET /api/sales/buyer
-// @access  Private/Buyer
+// @desc    Get purchase history for the authenticated user
+// @route   GET /api/sales/me
+// @access  Private
 const getBuyerOrders = async (req, res) => {
     try {
         const { search, category, minPrice, maxPrice, condition, status } = req.query;

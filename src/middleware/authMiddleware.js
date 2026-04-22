@@ -77,4 +77,20 @@ const admin = (req, res, next) => {
     }
 };
 
-module.exports = { protect, admin, protectOrInternalAgent, isInternalAgentRequest };
+const authorizeRoles = (...allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Not authorized' });
+        }
+
+        if (req.user.role === 'admin' || allowedRoles.includes(req.user.role)) {
+            return next();
+        }
+
+        return res.status(403).json({
+            message: `Not authorized for ${req.user.role} accounts`
+        });
+    };
+};
+
+module.exports = { protect, admin, protectOrInternalAgent, isInternalAgentRequest, authorizeRoles };
