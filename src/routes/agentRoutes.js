@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const {
-    chatWithAgent,
+    chatConversation,
+    chatStrategic,
     listSessions,
     getSession,
     deleteSession,
@@ -17,7 +18,8 @@ const {
 } = require('../controllers/agentController');
 const { protect, protectOrInternalAgent } = require('../middleware/authMiddleware');
 
-router.post('/chat', protect, chatWithAgent);
+router.post('/chat/conversation', protect, chatConversation);
+router.post('/chat/strategic', protect, chatStrategic);
 router.get('/sessions', protect, listSessions);
 router.get('/sessions/:id', protect, getSession);
 router.delete('/sessions/:id', protect, deleteSession);

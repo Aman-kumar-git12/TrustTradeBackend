@@ -61,11 +61,11 @@ const requestAgent = async (url, options = {}, timeoutMs = 30000) => {
     }
 };
 
-const chatWithAgent = async (req, res) => {
+const _internalChatWithAgent = async (req, res, forcedMode) => {
     try {
         const rawMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
         let sessionId = req.body?.sessionId || null;
-        const mode = req.body?.mode || 'conversation';
+        const mode = forcedMode || 'conversation';
         const userId = req.user?._id || req.user?.id;
 
         if (!rawMessage) {
@@ -98,7 +98,6 @@ const chatWithAgent = async (req, res) => {
         });
 
         // 3. Prepare History for Agent (Stateless Inference)
-        // Only send the last few messages for context
         const historyForAgent = session.messages.slice(-10).map(m => ({
             role: m.role,
             content: m.content
@@ -107,7 +106,7 @@ const chatWithAgent = async (req, res) => {
         const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8000').replace(/\/$/, "");
         const payload = {
             message: rawMessage,
-            history: historyForAgent.slice(0, -1), // Don't include the current message in history yet
+            history: historyForAgent.slice(0, -1),
             sessionId,
             mode,
             metadata: req.body?.metadata || {},
@@ -144,7 +143,6 @@ const chatWithAgent = async (req, res) => {
             });
         } catch (error) {
             console.error('AI Agent Communication failure:', error.message);
-            // Save user message even if agent fails to maintain consistency
             await session.save();
             const fallback = fallbackReply(req.user?.role);
             return res.status(200).json({
@@ -156,6 +154,14 @@ const chatWithAgent = async (req, res) => {
         console.error('Chat error:', error);
         return res.status(500).json({ message: error.message });
     }
+};
+
+const chatConversation = async (req, res) => {
+    return _internalChatWithAgent(req, res, 'conversation');
+};
+
+const chatStrategic = async (req, res) => {
+    return _internalChatWithAgent(req, res, 'agent');
 };
 
 const resolveUserId = (req) => req.user?._id || req.user?.id || req.body?.userId || req.query?.userId || null;
@@ -429,7 +435,8 @@ const recordAgentNegotiation = async (req, res) => {
 };
 
 module.exports = {
-    chatWithAgent,
+    chatConversation,
+    chatStrategic,
     listSessions,
     getSession,
     deleteSession,
