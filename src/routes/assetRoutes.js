@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getAssets,
+    getCategories,
     getAssetById,
     createAsset,
     recordAssetView
@@ -25,6 +26,9 @@ router.route('/my-listings').get(protect, authorizeRoles('seller'), getSellerAss
 router.route('/my-listings/:id')
     .get(protect, authorizeRoles('seller'), getSellerAssetDetails)
     .put(protect, authorizeRoles('seller'), updateAsset); // Add PUT for update
+
+// Categories Route
+router.get('/categories', getCategories);
 
 // View Count Route - Public (Rate limited by controller)
 router.route('/:id/view').post(recordAssetView);

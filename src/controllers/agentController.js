@@ -97,19 +97,38 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
             timestamp: new Date()
         });
 
-        // 3. Prepare History for Agent (Stateless Inference)
-        const historyForAgent = session.messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.content
-        }));
-
+        // 3. Prepare State for Strategic Agent
         const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8000').replace(/\/$/, "");
+        
+        // Extract strategic variables from session metadata (full objects, not just IDs)
+        const sessionMeta = {};
+        if (session.metadata) {
+            // session.metadata is a Map — convert to plain object
+            if (typeof session.metadata.forEach === 'function') {
+                session.metadata.forEach((value, key) => { sessionMeta[key] = value; });
+            } else if (typeof session.metadata === 'object') {
+                Object.assign(sessionMeta, session.metadata);
+            }
+        }
+
+        const strategicContext = {
+            selected_asset: sessionMeta.selected_asset || (session.selectedAssetId ? { _id: session.selectedAssetId } : null),
+            assets: sessionMeta.assets || null,
+            quantity: sessionMeta.quantity || session.quantity,
+            reservation_id: sessionMeta.reservation_id || session.reservationId,
+            quotation: sessionMeta.quotation || (session.quoteId ? { _id: session.quoteId } : null),
+            payment_status: sessionMeta.payment_status || (session.paymentIntentId ? 'pending' : null),
+            current_node: sessionMeta.current_node || null,
+            category: sessionMeta.category || null,
+            proposal: sessionMeta.proposal || null,
+        };
+
         const payload = {
             message: rawMessage,
-            history: historyForAgent.slice(0, -1),
+            history: session.messages.slice(-10).map(m => ({ role: m.role, content: m.content })).slice(0, -1),
             sessionId,
             mode,
-            metadata: req.body?.metadata || {},
+            metadata: { ...strategicContext, ...(req.body?.metadata || {}) },
             user: {
                 id: String(userId),
                 fullName: req.user?.fullName || '',
@@ -119,12 +138,32 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
 
         try {
             // 4. Call Intelligence Core (Python)
-            const data = await requestAgent(`${agentUrl}/api/chat`, {
+            const endpoint = mode === 'agent' ? '/api/agent' : '/api/chat';
+            const data = await requestAgent(`${agentUrl}${endpoint}`, {
                 method: 'POST',
                 body: JSON.stringify(payload)
             }, 30000);
 
-            // 5. Append Agent Reply
+            // 5. Update Strategic State in Session (preserve full objects)
+            if (mode === 'agent' && data.metadata) {
+                if (data.metadata.selected_asset) {
+                    session.selectedAssetId = data.metadata.selected_asset._id || data.metadata.selected_asset;
+                }
+                if (data.metadata.quantity) session.quantity = data.metadata.quantity;
+                if (data.metadata.reservation_id) session.reservationId = data.metadata.reservation_id;
+                if (data.metadata.quotation) {
+                    session.quoteId = data.metadata.quotation._id || data.metadata.quotation.quoteId || data.metadata.quotation;
+                }
+                
+                // Persist ALL metadata keys (selected_asset, assets, current_node, etc.)
+                const existingMetadata = session.metadata || new Map();
+                Object.keys(data.metadata).forEach(key => {
+                    existingMetadata.set(key, data.metadata[key]);
+                });
+                session.metadata = existingMetadata;
+            }
+
+            // 6. Append Agent Reply
             session.messages.push({
                 role: 'assistant',
                 content: data.reply,
@@ -132,7 +171,7 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
                 timestamp: new Date()
             });
 
-            // 6. Persist to MongoDB (Node Backend)
+            // 7. Persist to MongoDB
             session.updatedAt = new Date();
             await session.save();
 
@@ -168,11 +207,13 @@ const resolveUserId = (req) => req.user?._id || req.user?.id || req.body?.userId
 
 const searchAgentAssets = async (req, res) => {
     try {
+        // Support both GET (query params) and POST (body) for flexibility
+        const source = { ...req.query, ...req.body };
         const assets = await searchAssets({
-            query: req.body?.query,
-            category: req.body?.category,
-            budgetMax: req.body?.budgetMax,
-            limit: req.body?.limit || 5,
+            query: source.query || source.search,
+            category: source.category,
+            budgetMax: source.budgetMax,
+            limit: source.limit || 5,
             userId: resolveUserId(req),
         });
         return res.status(200).json(assets);

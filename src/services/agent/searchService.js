@@ -70,8 +70,12 @@ const searchAssets = async ({ query, category, budgetMax, limit = 5, userId = nu
                     price: 1,
                     images: 1,
                     location: 1,
+                    condition: 1,
                     rating: 1,
                     reviewCount: 1,
+                    sales: 1,
+                    seller: 1,
+                    quantity: 1,
                     availableQuantity: { $subtract: ["$quantity", { $ifNull: ["$reservedQuantity", 0] }] }
                 }
             }

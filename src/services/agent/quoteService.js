@@ -34,10 +34,12 @@ const createQuote = async ({ assetId, quantity = 1, reservationId = null }) => {
         throw new Error('Requested quantity exceeds available stock');
     }
 
-    const basePrice = Number(asset.price || 0) * normalizedQuantity;
+    // GST is INCLUSIVE in the listed price — extract it, don't add it
+    const listedTotal = Number(asset.price || 0) * normalizedQuantity;
+    const basePrice = Number((listedTotal / (1 + TAX_RATE)).toFixed(2));
+    const tax = Number((listedTotal - basePrice).toFixed(2));
     const platformFee = PLATFORM_FEE;
-    const tax = Number((basePrice * TAX_RATE).toFixed(2));
-    const total = Number((basePrice + platformFee + tax).toFixed(2));
+    const total = Number((listedTotal + platformFee).toFixed(2));
 
     return {
         quoteId: `quote_${crypto.randomUUID()}`,

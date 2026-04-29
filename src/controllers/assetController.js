@@ -203,8 +203,21 @@ const recordAssetView = async (req, res) => {
     }
 };
 
+// @desc    Get all unique categories
+// @route   GET /api/assets/categories
+// @access  Public
+const getCategories = async (req, res) => {
+    try {
+        const categories = await Asset.distinct('category', { status: 'active' });
+        res.status(200).json({ categories });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getAssets,
+    getCategories,
     getAssetById,
     createAsset,
     getMyListings,
