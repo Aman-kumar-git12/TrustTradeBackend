@@ -18,7 +18,7 @@ const fallbackReply = (userRole) => ({
     sessionId: null
 });
 
-const requestAgent = async (url, options = {}, timeoutMs = 30000) => {
+const requestAgent = async (url, options = {}, timeoutMs = 60000) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -142,7 +142,7 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
             const data = await requestAgent(`${agentUrl}${endpoint}`, {
                 method: 'POST',
                 body: JSON.stringify(payload)
-            }, 30000);
+            }, 60000);
 
             // 5. Update Strategic State in Session (preserve full objects)
             if (mode === 'agent' && data.metadata) {
