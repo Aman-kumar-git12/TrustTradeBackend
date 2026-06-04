@@ -58,19 +58,29 @@ const createAgentPaymentOrder = async ({ assetId, quantity = 1, reservationId, s
         key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const order = await razorpay.orders.create({
-        amount: Math.round(Number(quote.total || 0) * 100),
-        currency: 'INR',
-        receipt: `agent_receipt_${Date.now()}`,
-        notes: {
-            assetId: String(assetId),
-            reservationId: String(reservationId),
-            quantity: String(normalizedQuantity),
-            buyerId: String(userId),
-            sessionId: String(sessionId),
-            quoteId: String(quote.quoteId || ''),
-        },
-    });
+    let order;
+    try {
+        order = await razorpay.orders.create({
+            amount: Math.round(Number(quote.total || 0) * 100),
+            currency: 'INR',
+            receipt: `agent_receipt_${Date.now()}`,
+            notes: {
+                assetId: String(assetId),
+                reservationId: String(reservationId),
+                quantity: String(normalizedQuantity),
+                buyerId: String(userId),
+                sessionId: String(sessionId),
+                quoteId: String(quote.quoteId || ''),
+            },
+        });
+    } catch (error) {
+        const message =
+            error?.error?.description ||
+            error?.error?.message ||
+            error?.message ||
+            `Razorpay order creation failed: ${JSON.stringify(error)}`;
+        throw new Error(message);
+    }
 
     const paymentIntent = await PaymentIntent.create({
         userId,

@@ -61,6 +61,33 @@ const requestAgent = async (url, options = {}, timeoutMs = 60000) => {
     }
 };
 
+const requestAgentWithFallback = async (baseUrl, payload, mode) => {
+    const preferredEndpoint = mode === 'agent' ? '/api/agent' : '/api/chat';
+    const fallbackEndpoint = mode === 'agent' ? '/api/chat' : null;
+    const attempts = [preferredEndpoint, fallbackEndpoint].filter(Boolean);
+
+    let lastError = null;
+
+    for (const endpoint of attempts) {
+        try {
+            return await requestAgent(`${baseUrl}${endpoint}`, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            }, 60000);
+        } catch (error) {
+            lastError = error;
+
+            // Strategic mode is supported by both endpoints in the Python agent,
+            // so a 404 usually means the process is exposing the older route shape.
+            if (!(mode === 'agent' && error.status === 404 && endpoint === preferredEndpoint)) {
+                throw error;
+            }
+        }
+    }
+
+    throw lastError;
+};
+
 const _internalChatWithAgent = async (req, res, forcedMode) => {
     try {
         const rawMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
@@ -98,7 +125,9 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
         });
 
         // 3. Prepare State for Strategic Agent
-        const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8000').replace(/\/$/, "");
+        const agentUrl = (process.env.PYTHON_AGENT_URL || 'http://localhost:8001')
+            .replace(/\/$/, "")
+            .replace(/\/api$/, "");
         
         // Extract strategic variables from session metadata (full objects, not just IDs)
         const sessionMeta = {};
@@ -130,7 +159,7 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
             mode,
             metadata: { ...strategicContext, ...(req.body?.metadata || {}) },
             user: {
-                id: String(userId),
+                id: userId ? String(userId) : null,
                 fullName: req.user?.fullName || '',
                 role: req.user?.role || 'member'
             }
@@ -138,11 +167,7 @@ const _internalChatWithAgent = async (req, res, forcedMode) => {
 
         try {
             // 4. Call Intelligence Core (Python)
-            const endpoint = mode === 'agent' ? '/api/agent' : '/api/chat';
-            const data = await requestAgent(`${agentUrl}${endpoint}`, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            }, 60000);
+            const data = await requestAgentWithFallback(agentUrl, payload, mode);
 
             // 5. Update Strategic State in Session (preserve full objects)
             if (mode === 'agent' && data.metadata) {

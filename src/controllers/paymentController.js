@@ -147,18 +147,29 @@ const createOrder = async (req, res) => {
             buyerId: req.user._id
         });
 
-        const order = await razorpay.orders.create({
-            amount: Math.round(paymentContext.amount * 100), // paise
-            currency: "INR",
-            receipt: `receipt_${Date.now()}`,
-            notes: {
-                interestId: interestId || "",
-                assetId: assetId || "",
-                quantity: paymentContext.quantity || "",
-                buyerId: req.user._id.toString(),
-                reservationId: reservationId || "",
-            }
-        });
+        let order;
+        try {
+            order = await razorpay.orders.create({
+                amount: Math.round(paymentContext.amount * 100), // paise
+                currency: "INR",
+                receipt: `receipt_${Date.now()}`,
+                notes: {
+                    interestId: interestId || "",
+                    assetId: assetId || "",
+                    quantity: paymentContext.quantity || "",
+                    buyerId: req.user._id.toString(),
+                    reservationId: reservationId || "",
+                }
+            });
+        } catch (rzpError) {
+            console.error("Razorpay Error:", rzpError);
+            const razorpayMessage =
+                rzpError?.error?.description ||
+                rzpError?.error?.message ||
+                rzpError?.message ||
+                "Failed to create payment order.";
+            throw createHttpError(400, razorpayMessage);
+        }
 
         // Log Payment Initiated
         logActivity({

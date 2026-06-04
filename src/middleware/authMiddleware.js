@@ -7,12 +7,26 @@ const isInternalAgentRequest = (req) => {
     return Boolean(incomingKey && incomingKey === expectedKey);
 };
 
+const verifyAndLoadUser = async (token, sourceLabel) => {
+    if (!token) {
+        return null;
+    }
+
+    console.log(`[PROTECT] Verifying ${sourceLabel} Token...`);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log(`[PROTECT] Token Verified for ID: ${decoded.id}. Querying DB...`);
+    const user = await User.findById(decoded.id).select('-password');
+    console.log(`[PROTECT] DB Query Complete. User Found: ${!!user}`);
+    return user;
+};
+
 const protect = async (req, res, next) => {
     console.log(`[PROTECT] Request: ${req.method} ${req.originalUrl}`);
     console.log(`[PROTECT] Cookies count: ${Object.keys(req.cookies || {}).length}`);
     console.log(`[PROTECT] Auth Header: ${req.headers.authorization ? 'Present' : 'Missing'}`);
     
     let token;
+    const cookieToken = req.cookies?.auth_token || req.cookies?.token || req.cookies?.jwt || null;
 
     if (
         req.headers.authorization &&
@@ -20,36 +34,29 @@ const protect = async (req, res, next) => {
     ) {
         try {
             token = req.headers.authorization.split(' ')[1];
-            console.log("[PROTECT] Verifying Bearer Token...");
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log(`[PROTECT] Token Verified for ID: ${decoded.id}. Querying DB...`);
-            req.user = await User.findById(decoded.id).select('-password');
-            console.log(`[PROTECT] DB Query Complete. User Found: ${!!req.user}`);
-
-            if (!req.user) {
-                return res.status(401).json({ message: 'Not authorized, user not found' });
+            req.user = await verifyAndLoadUser(token, 'Bearer');
+            if (req.user) {
+                return next();
             }
 
-            return next();
+            console.warn('[PROTECT] Bearer token resolved no user; falling back to cookie token if present.');
         } catch (error) {
             console.error('Auth Error (Bearer):', error.message);
-            return res.status(401).json({ message: 'Not authorized, token failed' });
+            if (!cookieToken) {
+                return res.status(401).json({ message: 'Not authorized, token failed' });
+            }
         }
     }
 
-    if (!token && req.cookies && (req.cookies.jwt || req.cookies.token)) {
+    if (!req.user && cookieToken) {
         try {
-            token = req.cookies.jwt || req.cookies.token;
-            console.log(`[PROTECT] Verifying Cookie Token (${req.cookies.jwt ? 'jwt' : 'token'})...`);
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log(`[PROTECT] Token Verified for ID: ${decoded.id}. Querying DB...`);
-            req.user = await User.findById(decoded.id).select('-password');
-            console.log(`[PROTECT] DB Query Complete. User Found: ${!!req.user}`);
-            
+            token = cookieToken;
+            const cookieSource = req.cookies?.auth_token ? 'auth_token' : (req.cookies?.token ? 'token' : 'jwt');
+            req.user = await verifyAndLoadUser(token, `Cookie (${cookieSource})`);
             if (!req.user) {
                 return res.status(401).json({ message: 'Not authorized, user not found' });
             }
-            
+
             return next();
         } catch (error) {
             console.error('Auth Error (Cookie):', error.message);

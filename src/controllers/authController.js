@@ -58,7 +58,7 @@ const registerUser = async (req, res) => {
             });
 
             // Set cookie
-            res.cookie('token', token, {
+            res.cookie('auth_token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -116,7 +116,7 @@ const loginUser = async (req, res) => {
             relatedModel: 'User'
         });
 
-        res.cookie("token", token, {
+        res.cookie("auth_token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -176,7 +176,7 @@ const updateProfile = async (req, res) => {
             const updatedUser = await user.save();
             const token = generateToken(updatedUser._id);
 
-            res.cookie('token', token, {
+            res.cookie('auth_token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
@@ -320,6 +320,10 @@ const updateTheme = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 const logoutUser = (req, res) => {
+    res.cookie('auth_token', '', {
+        httpOnly: true,
+        expires: new Date(0)
+    });
     res.cookie('token', '', {
         httpOnly: true,
         expires: new Date(0)

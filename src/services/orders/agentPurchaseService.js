@@ -78,9 +78,14 @@ const completeStrategicPurchase = async ({ razorpayOrderId, razorpayPaymentId, r
 
         // 4. Decrement Stock Permanently
         // Subtract from both total quantity AND reservedQuantity
-        asset.quantity -= intent.quantity;
-        asset.reservedQuantity -= intent.quantity;
-        asset.sales += intent.quantity;
+        asset.quantity = Math.max(0, Number(asset.quantity || 0) - intent.quantity);
+        asset.reservedQuantity = Math.max(0, Number(asset.reservedQuantity || 0) - intent.quantity);
+        asset.sales = Number(asset.sales || 0) + intent.quantity;
+        
+        // Ensure status updates if out of stock
+        if (asset.quantity === 0) {
+            asset.status = 'inactive';
+        }
         await asset.save({ session });
 
         // 5. Mark Reservation as confirmed

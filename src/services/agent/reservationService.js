@@ -72,7 +72,29 @@ const releaseReservation = async (reservationId) => {
     }
 };
 
+const reconcileReservations = async () => {
+    try {
+        const assetsWithReservations = await Asset.find({ reservedQuantity: { $gt: 0 } });
+        for (const asset of assetsWithReservations) {
+            const activeReservations = await InventoryReservation.find({ 
+                assetId: asset._id, 
+                status: 'pending' 
+            });
+            const activeCount = activeReservations.reduce((sum, res) => sum + res.quantity, 0);
+            
+            if (activeCount !== asset.reservedQuantity) {
+                asset.reservedQuantity = activeCount;
+                await asset.save();
+            }
+        }
+        console.log("Reservation reconciliation complete");
+    } catch (error) {
+        console.error("Reconciliation error:", error);
+    }
+};
+
 module.exports = {
     createReservation,
-    releaseReservation
+    releaseReservation,
+    reconcileReservations
 };
